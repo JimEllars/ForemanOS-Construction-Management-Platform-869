@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useStore } from './store';
-import { supabase } from './lib/supabaseClient';
-import { useSupabaseData } from './hooks/useSupabaseData';
+import React, {useEffect} from 'react';
+import {HashRouter as Router, Routes, Route, Navigate} from 'react-router-dom';
+import {useStore} from './store';
+import {supabase} from './lib/supabaseClient';
+import {useSupabaseData} from './hooks/useSupabaseData';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 
 // Layouts
 import AuthLayout from './layouts/AuthLayout';
@@ -25,15 +26,15 @@ const TimeTrackingScreen = () => <div className="p-6">Time Tracking Screen - Com
 const DocumentsScreen = () => <div className="p-6">Documents Screen - Coming Soon</div>;
 
 function App() {
-  const { 
-    isAuthenticated, 
-    isLoading, 
-    setUser, 
-    setCompany, 
-    setSession, 
-    setLoading, 
+  const {
+    isAuthenticated,
+    isLoading,
+    setUser,
+    setCompany,
+    setSession,
+    setLoading,
     setOnlineStatus,
-    clearError 
+    clearError
   } = useStore();
 
   // Load data when authenticated
@@ -47,8 +48,8 @@ function App() {
     const checkSession = async () => {
       try {
         console.log('🔍 Checking existing session...');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
+        const {data: {session}, error} = await supabase.auth.getSession();
+
         if (error) {
           console.error('❌ Session check error:', error);
           setLoading(false);
@@ -57,9 +58,8 @@ function App() {
 
         if (session?.user) {
           console.log('✅ Found existing session for:', session.user.email);
-          
           // Fetch user profile and company
-          const { data: profile, error: profileError } = await supabase
+          const {data: profile, error: profileError} = await supabase
             .from('profiles_fos2025')
             .select(`
               *,
@@ -89,14 +89,13 @@ function App() {
     checkSession();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const {data: {subscription}} = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('🔄 Auth state changed:', event, session?.user?.email);
 
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('✅ User signed in:', session.user.email);
-          
-          const { data: profile, error } = await supabase
+          const {data: profile, error} = await supabase
             .from('profiles_fos2025')
             .select(`
               *,
@@ -167,37 +166,41 @@ function App() {
   }
 
   return (
-    <Router>
-      <Routes>
-        {/* Auth Routes */}
-        <Route path="/auth" element={<AuthLayout />}>
-          <Route path="login" element={<LoginScreen />} />
-          <Route path="register" element={<RegisterScreen />} />
-          <Route path="forgot-password" element={<ForgotPasswordScreen />} />
-        </Route>
+    <ErrorBoundary>
+      <Router>
+        <Routes>
+          {/* Auth Routes */}
+          <Route path="/auth" element={<AuthLayout />}>
+            <Route path="login" element={<LoginScreen />} />
+            <Route path="register" element={<RegisterScreen />} />
+            <Route path="forgot-password" element={<ForgotPasswordScreen />} />
+          </Route>
 
-        {/* App Routes */}
-        <Route
-          path="/app"
-          element={isAuthenticated ? <AppLayout /> : <Navigate to="/auth/login" replace />}
-        >
-          <Route index element={<DashboardScreen />} />
-          <Route path="projects" element={<ProjectsScreen />} />
-          <Route path="tasks" element={<TasksScreen />} />
-          <Route path="clients" element={<ClientsScreen />} />
-          <Route path="daily-logs" element={<DailyLogsScreen />} />
-          <Route path="time-tracking" element={<TimeTrackingScreen />} />
-          <Route path="documents" element={<DocumentsScreen />} />
-        </Route>
+          {/* App Routes */}
+          <Route
+            path="/app"
+            element={
+              isAuthenticated ? <AppLayout /> : <Navigate to="/auth/login" replace />
+            }
+          >
+            <Route index element={<DashboardScreen />} />
+            <Route path="projects" element={<ProjectsScreen />} />
+            <Route path="tasks" element={<TasksScreen />} />
+            <Route path="clients" element={<ClientsScreen />} />
+            <Route path="daily-logs" element={<DailyLogsScreen />} />
+            <Route path="time-tracking" element={<TimeTrackingScreen />} />
+            <Route path="documents" element={<DocumentsScreen />} />
+          </Route>
 
-        {/* Default Redirects */}
-        <Route
-          path="/"
-          element={<Navigate to={isAuthenticated ? "/app" : "/auth/login"} replace />}
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+          {/* Default Redirects */}
+          <Route
+            path="/"
+            element={<Navigate to={isAuthenticated ? "/app" : "/auth/login"} replace />}
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </ErrorBoundary>
   );
 }
 
