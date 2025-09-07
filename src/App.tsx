@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useStore } from './store';
 import { supabase } from './lib/supabaseClient';
+import { useSupabaseData } from './hooks/useSupabaseData';
 
 // Layouts
 import AuthLayout from './layouts/AuthLayout';
@@ -32,6 +33,9 @@ function App() {
     setLoading,
     setOnlineStatus 
   } = useStore();
+
+  // Load data when authenticated
+  useSupabaseData();
 
   useEffect(() => {
     // Check initial session
@@ -91,6 +95,17 @@ function App() {
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('SW registered: ', registration);
+        })
+        .catch((registrationError) => {
+          console.log('SW registration failed: ', registrationError);
+        });
+    }
 
     return () => {
       subscription.unsubscribe();

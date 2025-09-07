@@ -5,7 +5,7 @@ import SafeIcon from '../../components/common/SafeIcon';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Modal } from '../../components/ui/Modal';
+import CreateProjectModal from './CreateProjectModal';
 import { useStore } from '../../store';
 
 const { FiPlus, FiSearch, FiCalendar, FiDollarSign } = FiIcons;
@@ -124,26 +124,10 @@ const ProjectsScreen: React.FC = () => {
       )}
 
       {/* Create Project Modal */}
-      <Modal
+      <CreateProjectModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create New Project"
-      >
-        <div className="space-y-4">
-          <Input label="Project Name" placeholder="Enter project name" />
-          <Input label="Description" placeholder="Project description" />
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Start Date" type="date" />
-            <Input label="Budget" type="number" placeholder="0" />
-          </div>
-          <div className="flex space-x-3">
-            <Button className="flex-1">Create Project</Button>
-            <Button variant="outline" onClick={() => setShowCreateModal(false)}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      />
     </div>
   );
 };
