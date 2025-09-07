@@ -1,5 +1,5 @@
 import {StateCreator} from 'zustand';
-import {User, Company} from '../types';
+import {User,Company} from '../types';
 import {supabase} from '../lib/supabaseClient';
 
 export interface AuthSlice {
@@ -74,8 +74,8 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
     try {
       console.log('🔍 Loading user profile for:', data.user.email);
 
-      // Fetch user profile and company data
-      const {data: profile, error: profileError} = await supabase
+      // Fetch user profile and associated company data.
+      const { data: profile, error: profileError } = await supabase
         .from('profiles_fos2025')
         .select(`
           *,
@@ -84,91 +84,24 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         .eq('id', data.user.id)
         .single();
 
-      if (profileError) {
+      // If there's an error or no profile is found, stop the process.
+      if (profileError || !profile) {
         console.error('❌ Profile fetch error:', profileError);
-        // If profile doesn't exist, create one
-        if (profileError.code === 'PGRST116') {
-          console.log('📝 Profile not found, creating new profile...');
-          try {
-            // Create new company
-            console.log('📝 Creating new company for user...');
-            const {data: newCompany, error: companyError} = await supabase
-              .from('companies_fos2025')
-              .insert({
-                name: `${data.user.email?.split('@')[0]} Company`,
-                plan: 'free',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
-              .select()
-              .single();
-
-            if (companyError) {
-              console.error('❌ Company creation error:', companyError);
-              throw new Error(`Failed to create company profile: ${companyError.message}`);
-            }
-
-            // Create the user profile
-            console.log('📝 Creating user profile...');
-            const {data: newProfile, error: newProfileError} = await supabase
-              .from('profiles_fos2025')
-              .insert({
-                id: data.user.id,
-                email: data.user.email,
-                name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
-                role: 'admin',
-                company_id: newCompany.id,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
-              .select()
-              .single();
-
-            if (newProfileError) {
-              console.error('❌ Profile creation error:', newProfileError);
-              throw new Error(`Failed to create user profile: ${newProfileError.message}`);
-            }
-
-            // Set the user data with company information
-            const profileWithCompany = {
-              ...newProfile,
-              companies_fos2025: newCompany
-            };
-
-            set({
-              user: profileWithCompany,
-              company: newCompany,
-              session: data.session,
-              isAuthenticated: true,
-            });
-
-            console.log('✅ Profile created and user logged in successfully');
-            return;
-          } catch (creationError: any) {
-            console.error('❌ Profile/Company creation failed:', creationError);
-            throw new Error(`Account setup failed: ${creationError.message}`);
-          }
-        } else {
-          // Other profile errors
-          console.error('❌ Unrecoverable profile fetch error:', profileError);
-          throw new Error(`User authenticated, but failed to load user profile from the database: ${profileError.message}`);
-        }
+        throw new Error('Your account has been authenticated, but we could not find a user profile. Please contact support.');
       }
 
-      // Profile found successfully
-      if (profile) {
-        set({
-          user: profile,
-          company: profile.companies_fos2025,
-          session: data.session,
-          isAuthenticated: true,
-        });
-        console.log('✅ User logged in successfully:', profile.name);
-      } else {
-        throw new Error('Profile data is empty despite successful fetch.');
-      }
+      // If the profile is found, set the user and company data.
+      set({
+        user: profile,
+        company: profile.companies_fos2025,
+        session: data.session,
+        isAuthenticated: true,
+      });
+      console.log('✅ User logged in successfully:', profile.name);
+
     } catch (error: any) {
       console.error('❌ handleSuccessfulLogin failed:', error);
+      // Ensure the error is passed up to be displayed to the user.
       throw error;
     }
   },
