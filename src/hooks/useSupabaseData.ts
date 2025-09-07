@@ -6,7 +6,6 @@ import { clientService } from '../services/clientService';
 
 export const useSupabaseData = () => {
   const { 
-    user, 
     company, 
     isAuthenticated, 
     setProjects, 
@@ -16,18 +15,14 @@ export const useSupabaseData = () => {
   } = useStore();
 
   useEffect(() => {
-    if (isAuthenticated && company?.id && user?.id) {
-      console.log('🔄 Data loading conditions met:', {
-        isAuthenticated,
-        companyId: company.id,
-        userId: user.id
-      });
-      loadAllData();
+    // ✅ SIMPLIFIED: Only load supplementary data if user is fully authenticated and has company
+    if (isAuthenticated && company?.id) {
+      console.log('🔄 User is authenticated with company, loading supplementary data...');
+      loadSupplementaryData();
     } else {
-      console.log('⏸️ Data loading conditions not met:', {
+      console.log('⏸️ User not ready for data loading:', {
         isAuthenticated,
-        companyId: company?.id,
-        userId: user?.id
+        companyId: company?.id
       });
       
       // Reset data when not authenticated
@@ -38,88 +33,57 @@ export const useSupabaseData = () => {
         setLoading(false);
       }
     }
-  }, [isAuthenticated, company?.id, user?.id]);
+  }, [isAuthenticated, company?.id]);
 
-  const loadAllData = async () => {
+  const loadSupplementaryData = async () => {
     if (!company?.id) {
-      console.warn('⚠️ No company ID available for data loading');
+      console.warn('⚠️ No company ID available for supplementary data loading');
       setLoading(false);
       return;
     }
 
     try {
-      console.log('🔄 Starting sequential data load for company:', company.id);
       setLoading(true);
+      console.log('🔄 Loading supplementary data (projects, tasks, clients) for company:', company.id);
 
-      // ✅ BULLETPROOF: Set a timeout for data loading
-      const loadingTimeout = setTimeout(() => {
-        console.warn('⚠️ Data loading taking too long, completing anyway...');
-        setLoading(false);
-      }, 15000); // 15 second timeout
+      // ✅ OPTIMIZED: Load all supplementary data in parallel since login already loaded critical data
+      const [projects, tasks, clients] = await Promise.all([
+        projectService.getProjectsByCompany(company.id),
+        taskService.getTasksByCompany(company.id),
+        clientService.getClientsByCompany(company.id),
+      ]);
 
-      // Step 1: Fetch clients (this can run in parallel as it's independent)
-      console.log('📋 Starting clients fetch in parallel...');
-      const clientsPromise = clientService.getClientsByCompany(company.id);
-
-      // Step 2: Fetch projects first, as tasks are dependent on them
-      console.log('📋 Loading projects (required for tasks)...');
-      const projects = await projectService.getProjectsByCompany(company.id);
       setProjects(projects);
-      console.log('✅ Projects loaded successfully:', projects.length);
-
-      // Step 3: Now that we have projects, fetch their associated tasks
-      console.log('📋 Loading tasks (now that projects are available)...');
-      const tasks = await taskService.getTasksByCompany(company.id);
       setTasks(tasks);
-      console.log('✅ Tasks loaded successfully:', tasks.length);
-
-      // Step 4: Await the clients promise and set the state
-      console.log('📋 Completing clients fetch...');
-      const clients = await clientsPromise;
       setClients(clients);
-      console.log('✅ Clients loaded successfully:', clients.length);
 
-      // Clear the timeout since we completed successfully
-      clearTimeout(loadingTimeout);
-
-      console.log('🎉 All data loading completed successfully');
-      console.log('📊 Final data summary:', {
+      console.log('🎉 All supplementary data loaded successfully');
+      console.log('📊 Data summary:', {
         projects: projects.length,
         tasks: tasks.length,
         clients: clients.length
       });
 
     } catch (error) {
-      console.error('❌ Critical error during data loading sequence:', error);
+      console.error('❌ Failed to load supplementary data:', error);
       
-      // Provide detailed error information
-      if (error instanceof Error) {
-        console.error('❌ Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
-        });
-      }
-
-      // ✅ BULLETPROOF: On failure, set all data to empty arrays to prevent a broken UI state
-      console.log('🔄 Resetting all data arrays due to error...');
+      // ✅ GRACEFUL DEGRADATION: Set empty arrays on failure
       setProjects([]);
       setTasks([]);
       setClients([]);
-
-      // Don't throw the error - let the app continue to work
-      console.log('🔄 App will continue to work despite data loading error');
+      
+      console.log('🔄 App will continue to work with empty data arrays');
 
     } finally {
       setLoading(false);
-      console.log('✅ Data loading sequence completed (success or failure)');
+      console.log('✅ Supplementary data loading completed');
     }
   };
 
   const refreshData = () => {
     if (company?.id) {
       console.log('🔄 Manual data refresh requested...');
-      loadAllData();
+      loadSupplementaryData();
     } else {
       console.warn('⚠️ Cannot refresh data: no company ID available');
     }

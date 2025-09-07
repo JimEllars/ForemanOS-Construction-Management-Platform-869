@@ -9,7 +9,6 @@ export interface AuthSlice {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, companyName: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -29,7 +28,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   company: null,
   session: null,
   isAuthenticated: false,
-  isLoading: false, // ✅ FIXED: Start with false - only show loading during explicit actions
+  isLoading: false,
   error: null,
 
   login: async (email: string, password: string) => {
@@ -62,7 +61,10 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       }
 
       console.log('✅ Authentication successful, loading profile...');
-      await get().handleSuccessfulLogin(data);
+      
+      // ✅ CRITICAL FIX: Don't call handleSuccessfulLogin here
+      // Let the onAuthStateChange listener handle it to prevent race condition
+      console.log('🔄 Waiting for auth state change to handle login completion...');
 
     } catch (error: any) {
       console.error('❌ Login failed:', error);
@@ -73,18 +75,16 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
   handleSuccessfulLogin: async (data: any) => {
     try {
-      console.log('🔍 Loading user profile for:', data.user.email);
+      console.log('🔍 Starting handleSuccessfulLogin for user:', data.user.email);
       console.log('🔍 User ID:', data.user.id);
 
-      // STEP 1: Fetch the user's profile with more detailed logging
-      console.log('📋 Fetching profile from profiles_fos2025...');
+      // ✅ CRITICAL FIX: Fetch profile and company data BEFORE setting authenticated state
+      console.log('📋 Step 1: Fetching user profile...');
       const { data: profile, error: profileError } = await supabase
         .from('profiles_fos2025')
         .select('*')
         .eq('id', data.user.id)
         .single();
-
-      console.log('📋 Profile query result:', { profile, profileError });
 
       if (profileError) {
         console.error('❌ Profile fetch error:', profileError);
@@ -130,19 +130,14 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
             throw new Error('Failed to create user profile. Please contact support.');
           }
 
-          // Use the newly created profile and company
-          const profileWithCompany = {
-            ...newProfile,
-            companies_fos2025: newCompany
-          };
-
+          // ✅ ATOMIC STATE UPDATE: Set everything at once, ONLY after all data is ready
           set({
-            user: profileWithCompany,
+            user: { ...newProfile, companies_fos2025: newCompany },
             company: newCompany,
             session: data.session,
-            isAuthenticated: true,
-            error: null,
+            isAuthenticated: true, // This is the LAST thing we set
             isLoading: false,
+            error: null
           });
 
           console.log('✅ New user profile created and logged in successfully:', newProfile.name);
@@ -159,11 +154,10 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       console.log('✅ Profile loaded successfully:', profile.name);
       console.log('🏢 Profile company_id:', profile.company_id);
 
-      // STEP 2: Fetch company data with better error handling
+      // ✅ STEP 2: Fetch company data
       if (!profile.company_id) {
         console.warn('⚠️ Profile has no company_id, creating default company...');
         
-        // Create a default company
         const { data: newCompany, error: companyError } = await supabase
           .from('companies_fos2025')
           .insert({
@@ -181,7 +175,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         }
 
         // Update the profile with the new company_id
-        const { error: updateError } = await supabase
+        await supabase
           .from('profiles_fos2025')
           .update({
             company_id: newCompany.id,
@@ -189,38 +183,26 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
           })
           .eq('id', profile.id);
 
-        if (updateError) {
-          console.error('❌ Profile update error:', updateError);
-        }
-
-        // Use the new company
-        const profileWithCompany = {
-          ...profile,
-          company_id: newCompany.id,
-          companies_fos2025: newCompany
-        };
-
+        // ✅ ATOMIC STATE UPDATE: Set everything at once
         set({
-          user: profileWithCompany,
+          user: { ...profile, company_id: newCompany.id, companies_fos2025: newCompany },
           company: newCompany,
           session: data.session,
-          isAuthenticated: true,
-          error: null,
+          isAuthenticated: true, // This is the LAST thing we set
           isLoading: false,
+          error: null
         });
 
         console.log('✅ Default company created and user logged in successfully');
         return;
       }
 
-      console.log('🔍 Fetching company data for company_id:', profile.company_id);
+      console.log('🔍 Step 2: Fetching company data for company_id:', profile.company_id);
       const { data: company, error: companyError } = await supabase
         .from('companies_fos2025')
         .select('*')
         .eq('id', profile.company_id)
         .single();
-
-      console.log('🏢 Company query result:', { company, companyError });
 
       if (companyError || !company) {
         console.error('❌ Company fetch error:', companyError);
@@ -244,7 +226,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         }
 
         // Update the profile with the new company_id
-        const { error: updateError } = await supabase
+        await supabase
           .from('profiles_fos2025')
           .update({
             company_id: newCompany.id,
@@ -252,24 +234,14 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
           })
           .eq('id', profile.id);
 
-        if (updateError) {
-          console.error('❌ Profile company update error:', updateError);
-        }
-
-        // Use the newly created company
-        const profileWithCompany = {
-          ...profile,
-          company_id: newCompany.id,
-          companies_fos2025: newCompany
-        };
-
+        // ✅ ATOMIC STATE UPDATE: Set everything at once
         set({
-          user: profileWithCompany,
+          user: { ...profile, company_id: newCompany.id, companies_fos2025: newCompany },
           company: newCompany,
           session: data.session,
-          isAuthenticated: true,
-          error: null,
+          isAuthenticated: true, // This is the LAST thing we set
           isLoading: false,
+          error: null
         });
 
         console.log('✅ Default company created and user logged in successfully');
@@ -278,30 +250,32 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
       console.log('✅ Company loaded successfully:', company.name);
 
-      // Combine the data and set the state
-      const profileWithCompany = {
-        ...profile,
-        companies_fos2025: company
-      };
-
+      // ✅ FINAL ATOMIC STATE UPDATE: Set everything at once, ONLY after ALL data is ready
       set({
-        user: profileWithCompany,
+        user: { ...profile, companies_fos2025: company },
         company: company,
         session: data.session,
-        isAuthenticated: true,
-        error: null,
+        isAuthenticated: true, // This is the CRITICAL LAST STATE CHANGE
         isLoading: false,
+        error: null
       });
 
-      console.log('✅ User logged in successfully:', profile.name);
+      console.log('✅ User logged in successfully with all data loaded:', profile.name);
+      console.log('📊 Login complete. User can now access dashboard.');
 
     } catch (error: any) {
       console.error('❌ handleSuccessfulLogin failed:', error);
+      
+      // ✅ CLEAN UP ON FAILURE: Reset to a clean state
       set({
-        error: error.message,
+        user: null,
+        company: null,
+        session: null,
         isAuthenticated: false,
         isLoading: false,
+        error: error.message
       });
+      
       throw error;
     }
   },
@@ -435,6 +409,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
     try {
       console.log('👋 Logging out...');
       await supabase.auth.signOut();
+      
       set({
         user: null,
         company: null,
@@ -443,6 +418,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         error: null,
         isLoading: false,
       });
+      
       console.log('✅ Logged out successfully');
     } catch (error: any) {
       console.error('❌ Logout error:', error);

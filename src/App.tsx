@@ -26,13 +26,11 @@ const TimeTrackingScreen = () => <div className="p-6">Time Tracking Screen - Com
 const DocumentsScreen = () => <div className="p-6">Documents Screen - Coming Soon</div>;
 
 function App() {
-  // ✅ FIXED: Separate state for initial session check
+  // ✅ SIMPLIFIED: Only track initial session check
   const [isCheckingSession, setIsCheckingSession] = useState(true);
-  const [initializationError, setInitializationError] = useState<string | null>(null);
   
   const { 
     isAuthenticated, 
-    isLoading, 
     setUser, 
     setCompany, 
     setSession, 
@@ -41,61 +39,60 @@ function App() {
     handleSuccessfulLogin 
   } = useStore();
 
-  // Load data when authenticated
+  // Load supplementary data when authenticated
   useSupabaseData();
 
   useEffect(() => {
-    let mounted = true; // Prevent state updates if component unmounts
-    let timeoutId: NodeJS.Timeout;
+    let mounted = true;
+    let isHandlingAuth = false; // ✅ CRITICAL FIX: Prevent duplicate auth handling
 
     // Clear any errors on app start
     clearError();
-    setInitializationError(null);
 
-    // ✅ BULLETPROOF: Set a maximum timeout for initialization
+    // ✅ BULLETPROOF: Maximum 8 second timeout for session check
     const initTimeout = setTimeout(() => {
       if (mounted && isCheckingSession) {
-        console.warn('⚠️ Session check taking too long, proceeding anyway...');
+        console.warn('⚠️ Session check timeout reached, proceeding to app...');
         setIsCheckingSession(false);
-        setInitializationError('Session check timed out, but you can still proceed.');
       }
-    }, 10000); // 10 second maximum wait
+    }, 8000);
 
     // Check initial session
     const checkSession = async () => {
       try {
-        console.log('🔍 Checking existing session...');
+        console.log('🔍 Checking for existing session...');
         
         const { data: { session }, error } = await supabase.auth.getSession();
 
-        if (!mounted) return; // Component was unmounted
+        if (!mounted) return;
 
         if (error) {
           console.error('❌ Session check error:', error);
-          // Don't treat session errors as fatal - user can still log in
-          setInitializationError(`Session check failed: ${error.message}`);
+          // Non-fatal - user can still log in
+          setIsCheckingSession(false);
           return;
         }
 
-        if (session?.user) {
+        if (session?.user && !isHandlingAuth) {
           console.log('✅ Found existing session for:', session.user.email);
-          // The onAuthStateChange listener will handle this automatically
-          // No need to call handleSuccessfulLogin here to avoid duplicate calls
+          isHandlingAuth = true;
+          try {
+            await handleSuccessfulLogin({ user: session.user, session });
+          } catch (error) {
+            console.error('❌ Failed to handle existing session:', error);
+          } finally {
+            isHandlingAuth = false;
+          }
         } else {
-          console.log('ℹ️ No existing session found - user needs to log in');
+          console.log('ℹ️ No existing session found');
         }
       } catch (error) {
-        console.error('❌ Session check error:', error);
-        if (mounted) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          setInitializationError(`Failed to check session: ${errorMessage}`);
-        }
+        console.error('❌ Session check failed:', error);
       } finally {
-        // ✅ CRITICAL FIX: Always clear the initial loading state
         if (mounted) {
           clearTimeout(initTimeout);
           setIsCheckingSession(false);
-          console.log('✅ Initial session check completed');
+          console.log('✅ Session check completed');
         }
       }
     };
@@ -109,24 +106,24 @@ function App() {
 
         console.log('🔄 Auth state changed:', event, session?.user?.email);
 
-        if (event === 'SIGNED_IN' && session?.user) {
-          console.log('✅ User signed in:', session.user.email);
+        // ✅ CRITICAL FIX: Only handle auth state changes if not already handling auth
+        if (event === 'SIGNED_IN' && session?.user && !isHandlingAuth) {
+          console.log('✅ User signed in via auth state change, loading profile data...');
+          isHandlingAuth = true;
           try {
             await handleSuccessfulLogin({ user: session.user, session });
           } catch (error) {
             console.error('❌ Failed to handle sign in:', error);
-            // Don't prevent app from working if profile loading fails
-            if (mounted) {
-              setInitializationError('Profile loading failed, but authentication succeeded.');
-            }
+          } finally {
+            isHandlingAuth = false;
           }
         } else if (event === 'SIGNED_OUT') {
           console.log('👋 User signed out');
           if (mounted) {
+            isHandlingAuth = false; // Reset the flag
             setUser(null);
             setCompany(null);
             setSession(null);
-            setInitializationError(null);
           }
         } else if (event === 'TOKEN_REFRESHED') {
           console.log('🔄 Token refreshed');
@@ -173,55 +170,33 @@ function App() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []); // ✅ SIMPLIFIED: Empty dependency array
+  }, []);
 
-  // ✅ FIXED: Show initial loading screen only during session check
+  // ✅ FIXED: Show loading only during initial session check
   if (isCheckingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-secondary-50">
         <div className="text-center max-w-md mx-auto p-6">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
           <p className="text-secondary-600 font-medium">Initializing ForemanOS...</p>
-          <p className="text-secondary-500 text-sm mt-1">Checking for existing session</p>
+          <p className="text-secondary-500 text-sm mt-1">Checking authentication status</p>
           
-          {/* Progress indicator */}
           <div className="mt-4 w-full bg-secondary-200 rounded-full h-2">
-            <div className="bg-primary-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+            <div className="bg-primary-600 h-2 rounded-full animate-pulse" style={{ width: '70%' }}></div>
           </div>
           
-          {/* Helpful message */}
           <p className="text-xs text-secondary-400 mt-3">
-            This should only take a moment...
+            This will complete shortly...
           </p>
         </div>
       </div>
     );
   }
 
-  // ✅ Show initialization error if it occurred, but still allow app to function
-  const showInitError = initializationError && !isAuthenticated;
-
-  // ✅ FIXED: Now the auth slice's isLoading only controls loading during explicit actions
-  // The main app routing will work correctly once isCheckingSession is false
-
+  // ✅ CLEAN ROUTING: App renders immediately after session check
   return (
     <ErrorBoundary>
       <Router>
-        {/* Show initialization error banner if needed */}
-        {showInitError && (
-          <div className="bg-warning-50 border-b border-warning-200 p-3 text-center">
-            <div className="flex items-center justify-center space-x-2 text-warning-700">
-              <span className="text-sm">⚠️ {initializationError}</span>
-              <button 
-                onClick={() => setInitializationError(null)}
-                className="text-warning-600 hover:text-warning-800 ml-2"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        )}
-
         <Routes>
           {/* Auth Routes */}
           <Route path="/auth" element={<AuthLayout />}>

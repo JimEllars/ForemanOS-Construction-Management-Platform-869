@@ -1,20 +1,21 @@
-import React, {useState, useEffect} from 'react';
-import {Link, useNavigate, useLocation} from 'react-router-dom';
-import {Card, CardHeader, CardTitle, CardContent} from '../../components/ui/Card';
-import {Input} from '../../components/ui/Input';
-import {Button} from '../../components/ui/Button';
-import {useStore} from '../../store';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
+import { useStore } from '../../store';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../components/common/SafeIcon';
 
-const {FiEye, FiEyeOff, FiInfo, FiAlertCircle} = FiIcons;
+const { FiEye, FiEyeOff, FiInfo, FiAlertCircle } = FiIcons;
 
 const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const {login, isLoading, error, clearError} = useStore();
+
+  const { login, isLoading, error, clearError, isAuthenticated } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -26,15 +27,26 @@ const LoginScreen: React.FC = () => {
     clearError();
   }, [clearError]);
 
+  // ✅ CRITICAL FIX: Navigate when authentication succeeds
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('✅ User authenticated, navigating to dashboard...');
+      navigate('/app', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!email.trim() || !password.trim()) {
       return;
     }
 
     try {
+      console.log('🔑 Starting login process...');
       await login(email.trim(), password);
-      navigate('/app');
+      // ✅ Don't navigate here - let the useEffect handle it when isAuthenticated changes
+      console.log('🔄 Login process completed, waiting for auth state update...');
     } catch (err) {
       // Error is handled in the store
       console.error('Login failed:', err);
@@ -104,9 +116,9 @@ const LoginScreen: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
-                  <SafeIcon
-                    icon={showPassword ? FiEyeOff : FiEye}
-                    className="w-4 h-4 text-secondary-400 hover:text-secondary-600"
+                  <SafeIcon 
+                    icon={showPassword ? FiEyeOff : FiEye} 
+                    className="w-4 h-4 text-secondary-400 hover:text-secondary-600" 
                   />
                 </button>
               </div>
@@ -125,8 +137,9 @@ const LoginScreen: React.FC = () => {
                   Remember me
                 </label>
               </div>
-              <Link
-                to="/auth/forgot-password"
+
+              <Link 
+                to="/auth/forgot-password" 
                 className="text-sm text-primary-600 hover:text-primary-500"
               >
                 Forgot password?
@@ -163,8 +176,8 @@ const LoginScreen: React.FC = () => {
             </Button>
 
             <div className="text-center">
-              <Link
-                to="/auth/register"
+              <Link 
+                to="/auth/register" 
                 className="text-sm text-primary-600 hover:text-primary-500"
               >
                 Don't have an account? <span className="font-medium">Sign up</span>
