@@ -1,11 +1,11 @@
 import React from 'react';
-import {motion} from 'framer-motion';
+import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import LoadingSpinner from './LoadingSpinner';
-import {Button} from './Button';
+import { Button } from './Button';
 
-const {FiWifi, FiWifiOff, FiRefreshCw, FiAlertCircle} = FiIcons;
+const { FiWifi, FiWifiOff, FiRefreshCw, FiAlertCircle } = FiIcons;
 
 interface DataLoadingStateProps {
   isLoading: boolean;
@@ -24,7 +24,7 @@ const DataLoadingState: React.FC<DataLoadingStateProps> = ({
   loadingMessage = "Loading your data...",
   children
 }) => {
-  // Show loading state
+  // Show loading state with more detailed progress
   if (isLoading) {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
@@ -35,6 +35,24 @@ const DataLoadingState: React.FC<DataLoadingStateProps> = ({
         >
           <LoadingSpinner size="lg" message={loadingMessage} />
           
+          {/* Progress indicator */}
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-secondary-200 max-w-sm">
+            <div className="space-y-2 text-sm text-secondary-600">
+              <div className="flex items-center justify-between">
+                <span>Loading projects...</span>
+                <div className="w-4 h-4 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Loading tasks...</span>
+                <div className="w-4 h-4 border-2 border-secondary-200 rounded-full"></div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Loading clients...</span>
+                <div className="w-4 h-4 border-2 border-secondary-200 rounded-full"></div>
+              </div>
+            </div>
+          </div>
+
           {/* Offline indicator */}
           {!isOnline && (
             <div className="flex items-center justify-center space-x-2 text-warning-600 bg-warning-50 px-4 py-2 rounded-lg">
@@ -56,14 +74,17 @@ const DataLoadingState: React.FC<DataLoadingStateProps> = ({
           animate={{ opacity: 1, y: 0 }}
           className="text-center max-w-md"
         >
-          <SafeIcon icon={FiAlertCircle} className="w-16 h-16 text-danger-500 mx-auto mb-4" />
+          <SafeIcon 
+            icon={FiAlertCircle} 
+            className="w-16 h-16 text-danger-500 mx-auto mb-4" 
+          />
           <h3 className="text-lg font-semibold text-secondary-900 mb-2">
             Unable to load data
           </h3>
           <p className="text-secondary-600 mb-4">
             {error}
           </p>
-          
+
           {/* Connection status */}
           <div className="flex items-center justify-center space-x-2 mb-4">
             <SafeIcon 
@@ -76,7 +97,10 @@ const DataLoadingState: React.FC<DataLoadingStateProps> = ({
           </div>
 
           {onRetry && (
-            <Button onClick={onRetry} disabled={!isOnline}>
+            <Button 
+              onClick={onRetry} 
+              disabled={!isOnline}
+            >
               <SafeIcon icon={FiRefreshCw} className="w-4 h-4 mr-2" />
               {isOnline ? 'Try Again' : 'Retry when online'}
             </Button>

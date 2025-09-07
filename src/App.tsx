@@ -59,7 +59,6 @@ function App() {
 
         if (session?.user) {
           console.log('✅ Found existing session for:', session.user.email);
-          
           // Use the same handleSuccessfulLogin function from authSlice
           // This ensures consistency between login and session restoration
           try {
@@ -111,6 +110,7 @@ function App() {
       console.log('🌐 Back online');
       setOnlineStatus(true);
     };
+
     const handleOffline = () => {
       console.log('📴 Gone offline');
       setOnlineStatus(false);
@@ -143,7 +143,25 @@ function App() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
           <p className="text-secondary-600 font-medium">Loading ForemanOS...</p>
-          <p className="text-secondary-500 text-sm mt-1">Connecting to your workspace</p>
+          <p className="text-secondary-500 text-sm mt-1">Initializing your workspace</p>
+          
+          {/* Progress steps */}
+          <div className="mt-4 bg-white rounded-lg p-4 shadow-sm border border-secondary-200 max-w-sm mx-auto">
+            <div className="space-y-2 text-xs text-secondary-600">
+              <div className="flex items-center justify-between">
+                <span>Authenticating...</span>
+                <div className="w-3 h-3 border border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Loading profile...</span>
+                <div className="w-3 h-3 border border-secondary-200 rounded-full"></div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Preparing data...</span>
+                <div className="w-3 h-3 border border-secondary-200 rounded-full"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -161,8 +179,8 @@ function App() {
           </Route>
 
           {/* App Routes */}
-          <Route
-            path="/app"
+          <Route 
+            path="/app" 
             element={isAuthenticated ? <AppLayout /> : <Navigate to="/auth/login" replace />}
           >
             <Route index element={<DashboardScreen />} />
@@ -175,9 +193,9 @@ function App() {
           </Route>
 
           {/* Default Redirects */}
-          <Route
-            path="/"
-            element={<Navigate to={isAuthenticated ? "/app" : "/auth/login"} replace />}
+          <Route 
+            path="/" 
+            element={<Navigate to={isAuthenticated ? "/app" : "/auth/login"} replace />} 
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

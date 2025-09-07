@@ -39,47 +39,35 @@ export const useSupabaseData = () => {
     }
 
     try {
-      console.log('🔄 Starting data load for company:', company.id);
+      console.log('🔄 Starting sequential data load for company:', company.id);
       setLoading(true);
 
-      // Load all data in parallel with individual error handling
-      const results = await Promise.allSettled([
-        projectService.getProjectsByCompany(company.id),
-        taskService.getTasksByCompany(company.id),
-        clientService.getClientsByCompany(company.id)
-      ]);
+      // Step 1: Fetch clients (can be done in parallel as it's independent)
+      const clientsPromise = clientService.getClientsByCompany(company.id);
 
-      // Process results individually to prevent one failure from breaking everything
-      const [projectsResult, tasksResult, clientsResult] = results;
+      // Step 2: Fetch projects first, as tasks depend on them
+      console.log('📋 Loading projects first...');
+      const projects = await projectService.getProjectsByCompany(company.id);
+      setProjects(projects);
+      console.log('✅ Projects loaded:', projects.length);
 
-      if (projectsResult.status === 'fulfilled') {
-        setProjects(projectsResult.value);
-        console.log('✅ Projects loaded:', projectsResult.value.length);
-      } else {
-        console.error('❌ Failed to load projects:', projectsResult.reason);
-        setProjects([]); // Set empty array instead of leaving undefined
-      }
+      // Step 3: Now that projects are loaded, fetch tasks
+      console.log('📋 Loading tasks (depends on projects)...');
+      const tasks = await taskService.getTasksByCompany(company.id);
+      setTasks(tasks);
+      console.log('✅ Tasks loaded:', tasks.length);
 
-      if (tasksResult.status === 'fulfilled') {
-        setTasks(tasksResult.value);
-        console.log('✅ Tasks loaded:', tasksResult.value.length);
-      } else {
-        console.error('❌ Failed to load tasks:', tasksResult.reason);
-        setTasks([]); // Set empty array instead of leaving undefined
-      }
+      // Step 4: Await and set clients (this was running in parallel)
+      console.log('📋 Loading clients...');
+      const clients = await clientsPromise;
+      setClients(clients);
+      console.log('✅ Clients loaded:', clients.length);
 
-      if (clientsResult.status === 'fulfilled') {
-        setClients(clientsResult.value);
-        console.log('✅ Clients loaded:', clientsResult.value.length);
-      } else {
-        console.error('❌ Failed to load clients:', clientsResult.reason);
-        setClients([]); // Set empty array instead of leaving undefined
-      }
+      console.log('🎉 All data loading completed successfully');
 
-      console.log('🎉 Data loading completed');
     } catch (error) {
       console.error('❌ Critical error loading data:', error);
-      // Ensure we still set empty arrays to prevent undefined states
+      // Set all data to empty arrays on failure to prevent a broken state
       setProjects([]);
       setTasks([]);
       setClients([]);
