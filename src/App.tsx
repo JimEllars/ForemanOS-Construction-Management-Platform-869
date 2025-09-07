@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useStore } from './store';
 import { supabase } from './lib/supabaseClient';
 import { useSupabaseData } from './hooks/useSupabaseData';
@@ -30,7 +30,7 @@ function App() {
     setUser, 
     setCompany, 
     setSession, 
-    setLoading,
+    setLoading, 
     setOnlineStatus 
   } = useStore();
 
@@ -45,13 +45,16 @@ function App() {
         
         if (session?.user) {
           // Fetch user profile and company
-          const { data: profile } = await supabase
+          const { data: profile, error } = await supabase
             .from('profiles_fos2025')
-            .select('*, companies_fos2025(*)')
+            .select(`
+              *,
+              companies_fos2025 (*)
+            `)
             .eq('id', session.user.id)
             .single();
 
-          if (profile) {
+          if (!error && profile) {
             setUser(profile);
             setCompany(profile.companies_fos2025);
             setSession(session);
@@ -69,14 +72,19 @@ function App() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
+        
         if (event === 'SIGNED_IN' && session?.user) {
-          const { data: profile } = await supabase
+          const { data: profile, error } = await supabase
             .from('profiles_fos2025')
-            .select('*, companies_fos2025(*)')
+            .select(`
+              *,
+              companies_fos2025 (*)
+            `)
             .eq('id', session.user.id)
             .single();
 
-          if (profile) {
+          if (!error && profile) {
             setUser(profile);
             setCompany(profile.companies_fos2025);
             setSession(session);
@@ -92,7 +100,7 @@ function App() {
     // Listen for online/offline status
     const handleOnline = () => setOnlineStatus(true);
     const handleOffline = () => setOnlineStatus(false);
-
+    
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
@@ -137,9 +145,7 @@ function App() {
         {/* App Routes */}
         <Route 
           path="/app" 
-          element={
-            isAuthenticated ? <AppLayout /> : <Navigate to="/auth/login" replace />
-          }
+          element={isAuthenticated ? <AppLayout /> : <Navigate to="/auth/login" replace />}
         >
           <Route index element={<DashboardScreen />} />
           <Route path="projects" element={<ProjectsScreen />} />
@@ -153,9 +159,7 @@ function App() {
         {/* Default Redirects */}
         <Route 
           path="/" 
-          element={
-            <Navigate to={isAuthenticated ? "/app" : "/auth/login"} replace />
-          } 
+          element={<Navigate to={isAuthenticated ? "/app" : "/auth/login"} replace />} 
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
