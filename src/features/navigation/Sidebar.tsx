@@ -1,0 +1,99 @@
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import * as FiIcons from 'react-icons/fi';
+import SafeIcon from '../../components/common/SafeIcon';
+import { clsx } from 'clsx';
+
+const { 
+  FiHome, 
+  FiFolderPlus, 
+  FiCheckSquare, 
+  FiUsers, 
+  FiFileText, 
+  FiClock, 
+  FiUpload,
+  FiX 
+} = FiIcons;
+
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const navigationItems = [
+  { name: 'Dashboard', href: '/app', icon: FiHome },
+  { name: 'Projects', href: '/app/projects', icon: FiFolderPlus },
+  { name: 'Tasks', href: '/app/tasks', icon: FiCheckSquare },
+  { name: 'Clients', href: '/app/clients', icon: FiUsers },
+  { name: 'Daily Logs', href: '/app/daily-logs', icon: FiFileText },
+  { name: 'Time Tracking', href: '/app/time-tracking', icon: FiClock },
+  { name: 'Documents', href: '/app/documents', icon: FiUpload },
+];
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+  return (
+    <>
+      {/* Mobile overlay */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
+      <motion.div
+        initial={{ x: -280 }}
+        animate={{ x: isOpen ? 0 : -280 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className={clsx(
+          'fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-secondary-200 transform md:relative md:translate-x-0 md:block',
+          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        )}
+      >
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-secondary-200">
+            <h2 className="text-lg font-semibold text-secondary-900">ForemanOS</h2>
+            <button
+              onClick={onClose}
+              className="md:hidden p-1 rounded-md text-secondary-600 hover:text-secondary-900"
+            >
+              <SafeIcon icon={FiX} className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 p-4 space-y-2">
+            {navigationItems.map((item) => (
+              <NavLink
+                key={item.name}
+                to={item.href}
+                onClick={() => onClose()}
+                className={({ isActive }) =>
+                  clsx(
+                    'flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-primary-100 text-primary-700'
+                      : 'text-secondary-600 hover:text-secondary-900 hover:bg-secondary-100'
+                  )
+                }
+              >
+                <SafeIcon icon={item.icon} className="w-5 h-5" />
+                <span>{item.name}</span>
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+      </motion.div>
+    </>
+  );
+};
+
+export default Sidebar;
