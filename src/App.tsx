@@ -16,10 +16,10 @@ import ForgotPasswordScreen from './features/auth/ForgotPasswordScreen';
 // App Screens
 import DashboardScreen from './features/dashboard/DashboardScreen';
 import ProjectsScreen from './features/projects/ProjectsScreen';
+import ClientsScreen from './features/clients/ClientsScreen';
 
 // Placeholder screens
 const TasksScreen = () => <div className="p-6">Tasks Screen - Coming Soon</div>;
-const ClientsScreen = () => <div className="p-6">Clients Screen - Coming Soon</div>;
 const DailyLogsScreen = () => <div className="p-6">Daily Logs Screen - Coming Soon</div>;
 const TimeTrackingScreen = () => <div className="p-6">Time Tracking Screen - Coming Soon</div>;
 const DocumentsScreen = () => <div className="p-6">Documents Screen - Coming Soon</div>;
@@ -33,7 +33,7 @@ function App() {
     setSession, 
     setLoading, 
     setOnlineStatus,
-    clearError
+    clearError 
   } = useStore();
 
   // Load data when authenticated
@@ -47,7 +47,6 @@ function App() {
     const checkSession = async () => {
       try {
         console.log('🔍 Checking existing session...');
-        
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -55,7 +54,7 @@ function App() {
           setLoading(false);
           return;
         }
-        
+
         if (session?.user) {
           console.log('✅ Found existing session for:', session.user.email);
           
@@ -93,7 +92,7 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('🔄 Auth state changed:', event, session?.user?.email);
-        
+
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('✅ User signed in:', session.user.email);
           
@@ -128,11 +127,12 @@ function App() {
       console.log('🌐 Back online');
       setOnlineStatus(true);
     };
+
     const handleOffline = () => {
       console.log('📴 Gone offline');
       setOnlineStatus(false);
     };
-    
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
@@ -177,8 +177,8 @@ function App() {
         </Route>
 
         {/* App Routes */}
-        <Route 
-          path="/app" 
+        <Route
+          path="/app"
           element={isAuthenticated ? <AppLayout /> : <Navigate to="/auth/login" replace />}
         >
           <Route index element={<DashboardScreen />} />
@@ -191,9 +191,9 @@ function App() {
         </Route>
 
         {/* Default Redirects */}
-        <Route 
-          path="/" 
-          element={<Navigate to={isAuthenticated ? "/app" : "/auth/login"} replace />} 
+        <Route
+          path="/"
+          element={<Navigate to={isAuthenticated ? "/app" : "/auth/login"} replace />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
