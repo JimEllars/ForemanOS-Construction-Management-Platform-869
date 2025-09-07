@@ -1,6 +1,6 @@
-import { StateCreator } from 'zustand';
-import { User, Company } from '../types';
-import { supabase } from '../lib/supabaseClient';
+import {StateCreator} from 'zustand';
+import {User,Company} from '../types';
+import {supabase} from '../lib/supabaseClient';
 
 export interface AuthSlice {
   user: User | null;
@@ -9,20 +9,21 @@ export interface AuthSlice {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, companyName: string) => Promise<void>;
-  logout: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  updatePassword: (newPassword: string) => Promise<void>;
-  setUser: (user: User | null) => void;
-  setCompany: (company: Company | null) => void;
-  setSession: (session: any) => void;
-  setLoading: (loading: boolean) => void;
-  setError: (error: string | null) => void;
-  clearError: () => void;
+  login: (email: string,password: string)=> Promise<void>;
+  register: (email: string,password: string,name: string,companyName: string)=> Promise<void>;
+  logout: ()=> Promise<void>;
+  resetPassword: (email: string)=> Promise<void>;
+  updatePassword: (newPassword: string)=> Promise<void>;
+  setUser: (user: User | null)=> void;
+  setCompany: (company: Company | null)=> void;
+  setSession: (session: any)=> void;
+  setLoading: (loading: boolean)=> void;
+  setError: (error: string | null)=> void;
+  clearError: ()=> void;
+  handleSuccessfulLogin: (data: any)=> Promise<void>;
 }
 
-export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
+export const createAuthSlice: StateCreator<AuthSlice>=(set,get)=> ({
   user: null,
   company: null,
   session: null,
@@ -30,129 +31,181 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   isLoading: true,
   error: null,
 
-  login: async (email: string, password: string) => {
+  login: async (email: string,password: string)=> {
     try {
-      set({ isLoading: true, error: null });
-      console.log('🔐 Attempting login for:', email);
+      set({isLoading: true,error: null});
+      console.log('🔐 Attempting login for:',email);
 
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const {data,error}=await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
       });
 
       if (error) {
-        console.error('❌ Login error:', error);
-        throw new Error(error.message);
+        console.error('❌ Supabase auth error:',error);
+        
+        // Provide more specific error messages
+        let errorMessage = error.message;
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Please check your email and click the confirmation link before signing in.';
+        } else if (error.message.includes('Too many requests')) {
+          errorMessage = 'Too many login attempts. Please wait a few minutes before trying again.';
+        }
+        
+        throw new Error(errorMessage);
       }
 
       if (!data.user) {
-        throw new Error('Login failed: No user data returned.');
+        throw new Error('Login failed: No user data returned from authentication.');
       }
 
+      console.log('✅ Authentication successful, loading profile...');
       await get().handleSuccessfulLogin(data);
 
     } catch (error: any) {
-      console.error('❌ Login failed:', error);
-      set({ error: error.message });
+      console.error('❌ Login failed:',error);
+      set({error: error.message});
       throw error;
     } finally {
-      set({ isLoading: false });
+      set({isLoading: false});
     }
   },
 
-  handleSuccessfulLogin: async (data: any) => {
-    console.log('✅ Login successful, fetching profile...');
-    
-    // Fetch user profile and company data
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles_fos2025')
-      .select(`
-        *,
-        companies_fos2025 (*)
-      `)
-      .eq('id', data.user.id)
-      .single();
-
-    if (profileError) {
-      console.error('❌ Profile fetch error:', profileError);
+  handleSuccessfulLogin: async (data: any)=> {
+    try {
+      console.log('🔍 Loading user profile for:',data.user.email);
       
-      // If profile doesn't exist, create one
-      if (profileError.code === 'PGRST116') {
-        console.log('📝 Creating missing profile...');
-        
-        // For demo user, use existing company, for others create new
-        let companyId = 'demo-company-fos2025';
-        
-        if (data.user.email !== 'demo@foremanos.com') {
-          const { data: newCompany, error: companyError } = await supabase
-            .from('companies_fos2025')
-            .insert({
-              name: `${data.user.email?.split('@')[0]} Company`,
-              plan: 'free',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .select()
-            .single();
+      // Fetch user profile and company data
+      const {data: profile,error: profileError}=await supabase
+        .from('profiles_fos2025')
+        .select(`
+          *,
+          companies_fos2025 (*)
+        `)
+        .eq('id',data.user.id)
+        .single();
 
-          if (companyError) {
-            console.error('❌ Company creation error:', companyError);
-            throw new Error('Failed to create company profile');
+      if (profileError) {
+        console.error('❌ Profile fetch error:',profileError);
+        
+        // If profile doesn't exist, create one
+        if (profileError.code==='PGRST116') {
+          console.log('📝 Profile not found, creating new profile...');
+          
+          try {
+            // For demo user, use existing company, for others create new
+            let companyId = 'demo-company-fos2025';
+            let companyData = null;
+
+            if (data.user.email !== 'demo@foremanos.com') {
+              console.log('📝 Creating new company for user...');
+              
+              const {data: newCompany,error: companyError}=await supabase
+                .from('companies_fos2025')
+                .insert({
+                  name: `${data.user.email?.split('@')[0]} Company`,
+                  plan: 'free',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+              if (companyError) {
+                console.error('❌ Company creation error:',companyError);
+                throw new Error(`Failed to create company profile: ${companyError.message}`);
+              }
+              
+              companyId = newCompany.id;
+              companyData = newCompany;
+            } else {
+              // For demo user, fetch existing demo company
+              const {data: demoCompany,error: demoCompanyError}=await supabase
+                .from('companies_fos2025')
+                .select('*')
+                .eq('id','demo-company-fos2025')
+                .single();
+              
+              if (demoCompanyError) {
+                console.error('❌ Demo company fetch error:',demoCompanyError);
+                throw new Error('Demo company not found. Please contact support.');
+              }
+              
+              companyData = demoCompany;
+            }
+
+            // Create the user profile
+            console.log('📝 Creating user profile...');
+            const {data: newProfile,error: newProfileError}=await supabase
+              .from('profiles_fos2025')
+              .insert({
+                id: data.user.id,
+                email: data.user.email,
+                name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
+                role: 'admin',
+                company_id: companyId,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .select()
+              .single();
+
+            if (newProfileError) {
+              console.error('❌ Profile creation error:',newProfileError);
+              throw new Error(`Failed to create user profile: ${newProfileError.message}`);
+            }
+
+            // Set the user data with company information
+            const profileWithCompany = {
+              ...newProfile,
+              companies_fos2025: companyData
+            };
+
+            set({
+              user: profileWithCompany,
+              company: companyData,
+              session: data.session,
+              isAuthenticated: true,
+            });
+
+            console.log('✅ Profile created and user logged in successfully');
+            return;
+
+          } catch (creationError: any) {
+            console.error('❌ Profile/Company creation failed:',creationError);
+            throw new Error(`Account setup failed: ${creationError.message}`);
           }
-          companyId = newCompany.id;
+        } else {
+          // Other profile errors
+          console.error('❌ Unrecoverable profile fetch error:',profileError);
+          throw new Error(`User authenticated, but failed to load user profile from the database: ${profileError.message}`);
         }
+      }
 
-        // Create the user profile
-        const { data: newProfile, error: newProfileError } = await supabase
-          .from('profiles_fos2025')
-          .insert({
-            id: data.user.id,
-            email: data.user.email,
-            name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
-            role: 'admin',
-            company_id: companyId,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select(`
-            *,
-            companies_fos2025 (*)
-          `)
-          .single();
-
-        if (newProfileError) {
-          console.error('❌ Profile creation error:', newProfileError);
-          throw new Error('Failed to create user profile');
-        }
-
+      // Profile found successfully
+      if (profile) {
         set({
-          user: newProfile,
-          company: newProfile.companies_fos2025,
+          user: profile,
+          company: profile.companies_fos2025,
           session: data.session,
           isAuthenticated: true,
         });
-        
-        console.log('✅ Profile created and user logged in');
-        return;
+        console.log('✅ User logged in successfully:',profile.name);
       } else {
-        throw new Error('Failed to load user profile');
+        throw new Error('Profile data is empty despite successful fetch.');
       }
-    }
 
-    if (profile) {
-      set({
-        user: profile,
-        company: profile.companies_fos2025,
-        session: data.session,
-        isAuthenticated: true,
-      });
-      console.log('✅ User logged in successfully:', profile.name);
+    } catch (error: any) {
+      console.error('❌ handleSuccessfulLogin failed:',error);
+      throw error;
     }
   },
 
-  register: async (email: string, password: string, name: string, companyName: string) => {
+  register: async (email: string,password: string,name: string,companyName: string)=> {
     try {
-      set({ isLoading: true, error: null });
+      set({isLoading: true,error: null});
 
       // Validate password strength
       if (password.length < 8) {
@@ -162,10 +215,10 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         throw new Error('Password must contain at least one uppercase letter, one lowercase letter, and one number');
       }
 
-      console.log('📝 Registering new user:', email);
+      console.log('📝 Registering new user:',email);
 
       // First create a company
-      const { data: companyData, error: companyError } = await supabase
+      const {data: companyData,error: companyError}=await supabase
         .from('companies_fos2025')
         .insert({
           name: companyName,
@@ -177,31 +230,31 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         .single();
 
       if (companyError) {
-        console.error('❌ Company creation error:', companyError);
-        throw new Error('Failed to create company');
+        console.error('❌ Company creation error:',companyError);
+        throw new Error(`Failed to create company: ${companyError.message}`);
       }
 
       // Then sign up the user
-      const { data, error } = await supabase.auth.signUp({
+      const {data,error}=await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
         options: {
           data: {
             name,
             company_name: companyName,
-            company_id: companyData.id
+            company_id: companyData.id,
           },
         },
       });
 
       if (error) {
-        console.error('❌ Registration error:', error);
+        console.error('❌ Registration error:',error);
         throw new Error(error.message);
       }
 
-      // Create user profile
+      // Create user profile if user was created
       if (data.user) {
-        const { error: profileError } = await supabase
+        const {error: profileError}=await supabase
           .from('profiles_fos2025')
           .insert({
             id: data.user.id,
@@ -214,26 +267,28 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
           });
 
         if (profileError) {
-          console.error('❌ Profile creation error:', profileError);
+          console.error('❌ Profile creation error:',profileError);
+          // Don't throw here as the user was created successfully
+          console.log('⚠️ User created but profile creation failed - will be created on first login');
         }
 
         console.log('✅ User registered successfully');
       }
 
     } catch (error: any) {
-      console.error('❌ Registration failed:', error);
-      set({ error: error.message });
+      console.error('❌ Registration failed:',error);
+      set({error: error.message});
       throw error;
     } finally {
-      set({ isLoading: false });
+      set({isLoading: false});
     }
   },
 
-  resetPassword: async (email: string) => {
+  resetPassword: async (email: string)=> {
     try {
-      set({ isLoading: true, error: null });
+      set({isLoading: true,error: null});
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const {error}=await supabase.auth.resetPasswordForEmail(email,{
         redirectTo: `${window.location.origin}/auth/reset-password`,
       });
 
@@ -242,21 +297,20 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       }
 
       console.log('✅ Password reset email sent');
-
     } catch (error: any) {
-      console.error('❌ Password reset failed:', error);
-      set({ error: error.message });
+      console.error('❌ Password reset failed:',error);
+      set({error: error.message});
       throw error;
     } finally {
-      set({ isLoading: false });
+      set({isLoading: false});
     }
   },
 
-  updatePassword: async (newPassword: string) => {
+  updatePassword: async (newPassword: string)=> {
     try {
-      set({ isLoading: true, error: null });
+      set({isLoading: true,error: null});
 
-      const { error } = await supabase.auth.updateUser({
+      const {error}=await supabase.auth.updateUser({
         password: newPassword
       });
 
@@ -265,17 +319,16 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       }
 
       console.log('✅ Password updated successfully');
-
     } catch (error: any) {
-      console.error('❌ Password update failed:', error);
-      set({ error: error.message });
+      console.error('❌ Password update failed:',error);
+      set({error: error.message});
       throw error;
     } finally {
-      set({ isLoading: false });
+      set({isLoading: false});
     }
   },
 
-  logout: async () => {
+  logout: async ()=> {
     try {
       console.log('👋 Logging out...');
       await supabase.auth.signOut();
@@ -288,15 +341,15 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       });
       console.log('✅ Logged out successfully');
     } catch (error: any) {
-      console.error('❌ Logout error:', error);
-      set({ error: error.message });
+      console.error('❌ Logout error:',error);
+      set({error: error.message});
     }
   },
 
-  setUser: (user) => set({ user, isAuthenticated: !!user }),
-  setCompany: (company) => set({ company }),
-  setSession: (session) => set({ session }),
-  setLoading: (isLoading) => set({ isLoading }),
-  setError: (error) => set({ error }),
-  clearError: () => set({ error: null }),
+  setUser: (user)=> set({user,isAuthenticated: !!user}),
+  setCompany: (company)=> set({company}),
+  setSession: (session)=> set({session}),
+  setLoading: (isLoading)=> set({isLoading}),
+  setError: (error)=> set({error}),
+  clearError: ()=> set({error: null}),
 });

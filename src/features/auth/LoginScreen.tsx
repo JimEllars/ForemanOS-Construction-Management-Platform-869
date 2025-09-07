@@ -1,58 +1,70 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
-import { useStore } from '../../store';
+import React,{useState,useEffect} from 'react';
+import {Link,useNavigate,useLocation} from 'react-router-dom';
+import {Card,CardHeader,CardTitle,CardContent} from '../../components/ui/Card';
+import {Input} from '../../components/ui/Input';
+import {Button} from '../../components/ui/Button';
+import {useStore} from '../../store';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../components/common/SafeIcon';
 
-const { FiEye, FiEyeOff, FiInfo } = FiIcons;
+const {FiEye,FiEyeOff,FiInfo,FiAlertCircle}=FiIcons;
 
-const LoginScreen: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  
-  const { login, isLoading, error, clearError } = useStore();
-  const navigate = useNavigate();
-  const location = useLocation();
+const LoginScreen: React.FC=()=> {
+  const [email,setEmail]=useState('');
+  const [password,setPassword]=useState('');
+  const [showPassword,setShowPassword]=useState(false);
+  const [rememberMe,setRememberMe]=useState(false);
+  const {login,isLoading,error,clearError}=useStore();
+  const navigate=useNavigate();
+  const location=useLocation();
 
   // Get any success message from registration
-  const registrationMessage = location.state?.message;
+  const registrationMessage=location.state?.message;
 
-  useEffect(() => {
+  useEffect(()=> {
     // Clear any previous errors when component mounts
     clearError();
-  }, [clearError]);
+  },[clearError]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit=async (e: React.FormEvent)=> {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
       return;
     }
 
     try {
-      await login(email.trim(), password);
+      await login(email.trim(),password);
       navigate('/app');
     } catch (err) {
       // Error is handled in the store
-      console.error('Login failed:', err);
+      console.error('Login failed:',err);
     }
   };
 
-  const handleDemoLogin = async () => {
-    // Set the credentials and then call the login function
-    setEmail('demo@foremanos.com');
-    setPassword('demo123456');
-    
+  const handleDemoLogin=async ()=> {
     try {
-      await login('demo@foremanos.com', 'demo123456');
+      clearError();
+      setEmail('demo@foremanos.com');
+      setPassword('demo123456');
+      await login('demo@foremanos.com','demo123456');
       navigate('/app');
     } catch (err) {
-      console.error('Demo login failed:', err);
+      console.error('Demo login failed:',err);
     }
+  };
+
+  const getErrorIcon=()=> {
+    if (error?.includes('Invalid email or password')) {
+      return FiAlertCircle;
+    }
+    return FiInfo;
+  };
+
+  const getErrorColor=()=> {
+    if (error?.includes('Invalid email or password')) {
+      return 'danger';
+    }
+    return 'warning';
   };
 
   return (
@@ -79,7 +91,7 @@ const LoginScreen: React.FC = () => {
               label="Email Address"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e)=> setEmail(e.target.value)}
               required
               placeholder="Enter your email address"
               autoComplete="email"
@@ -93,7 +105,7 @@ const LoginScreen: React.FC = () => {
                 <Input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e)=> setPassword(e.target.value)}
                   required
                   placeholder="Enter your password"
                   autoComplete="current-password"
@@ -101,7 +113,7 @@ const LoginScreen: React.FC = () => {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={()=> setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
                   <SafeIcon
@@ -118,13 +130,14 @@ const LoginScreen: React.FC = () => {
                   id="remember-me"
                   type="checkbox"
                   checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
+                  onChange={(e)=> setRememberMe(e.target.checked)}
                   className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-secondary-700">
                   Remember me
                 </label>
               </div>
+
               <Link
                 to="/auth/forgot-password"
                 className="text-sm text-primary-600 hover:text-primary-500"
@@ -134,10 +147,22 @@ const LoginScreen: React.FC = () => {
             </div>
 
             {error && (
-              <div className="bg-danger-50 border border-danger-200 text-danger-700 px-4 py-3 rounded-md">
-                <div className="flex items-center">
-                  <SafeIcon icon={FiInfo} className="w-5 h-5 mr-2" />
-                  <span>{error}</span>
+              <div className={`bg-${getErrorColor()}-50 border border-${getErrorColor()}-200 text-${getErrorColor()}-700 px-4 py-3 rounded-md`}>
+                <div className="flex items-start">
+                  <SafeIcon icon={getErrorIcon()} className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">{error}</p>
+                    {error.includes('Invalid email or password') && (
+                      <div className="mt-2 text-sm">
+                        <p>Troubleshooting tips:</p>
+                        <ul className="list-disc list-inside mt-1 space-y-1">
+                          <li>Double-check your email and password</li>
+                          <li>Try the demo login below</li>
+                          <li>Use "Forgot password?" if needed</li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

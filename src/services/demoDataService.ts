@@ -1,15 +1,15 @@
-import { supabase } from '../lib/supabaseClient';
+import {supabase} from '../lib/supabaseClient';
 
-export const demoDataService = {
+export const demoDataService={
   async ensureDemoDataExists() {
     try {
       console.log('🔧 Ensuring demo data exists...');
 
       // Check if demo company exists
-      const { data: existingCompany } = await supabase
+      const {data: existingCompany}=await supabase
         .from('companies_fos2025')
         .select('id')
-        .eq('id', 'demo-company-fos2025')
+        .eq('id','demo-company-fos2025')
         .single();
 
       if (!existingCompany) {
@@ -25,13 +25,46 @@ export const demoDataService = {
           });
       }
 
+      // Ensure demo user profile exists
+      const {data: existingProfile}=await supabase
+        .from('profiles_fos2025')
+        .select('id')
+        .eq('email','demo@foremanos.com')
+        .single();
+
+      if (!existingProfile) {
+        console.log('📝 Creating demo user profile...');
+        
+        // First check if the user exists in auth
+        const {data: {users},error: listError}=await supabase.auth.admin.listUsers();
+        
+        if (!listError) {
+          const demoUser = users.find(u => u.email === 'demo@foremanos.com');
+          
+          if (demoUser) {
+            // Create profile for existing auth user
+            await supabase
+              .from('profiles_fos2025')
+              .insert({
+                id: demoUser.id,
+                email: 'demo@foremanos.com',
+                name: 'Demo User',
+                role: 'admin',
+                company_id: 'demo-company-fos2025',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+          }
+        }
+      }
+
       // Create demo projects if they don't exist
-      const { data: existingProjects } = await supabase
+      const {data: existingProjects}=await supabase
         .from('projects_fos2025')
         .select('id')
-        .eq('company_id', 'demo-company-fos2025');
+        .eq('company_id','demo-company-fos2025');
 
-      if (!existingProjects || existingProjects.length === 0) {
+      if (!existingProjects || existingProjects.length===0) {
         console.log('📝 Creating demo projects...');
         await supabase
           .from('projects_fos2025')
@@ -73,12 +106,12 @@ export const demoDataService = {
       }
 
       // Create demo tasks
-      const { data: existingTasks } = await supabase
+      const {data: existingTasks}=await supabase
         .from('tasks_fos2025')
         .select('id')
-        .eq('project_id', 'demo-project-1');
+        .eq('project_id','demo-project-1');
 
-      if (!existingTasks || existingTasks.length === 0) {
+      if (!existingTasks || existingTasks.length===0) {
         console.log('📝 Creating demo tasks...');
         await supabase
           .from('tasks_fos2025')
@@ -120,12 +153,12 @@ export const demoDataService = {
       }
 
       // Create demo clients
-      const { data: existingClients } = await supabase
+      const {data: existingClients}=await supabase
         .from('clients_fos2025')
         .select('id')
-        .eq('company_id', 'demo-company-fos2025');
+        .eq('company_id','demo-company-fos2025');
 
-      if (!existingClients || existingClients.length === 0) {
+      if (!existingClients || existingClients.length===0) {
         console.log('📝 Creating demo clients...');
         await supabase
           .from('clients_fos2025')
@@ -165,9 +198,8 @@ export const demoDataService = {
 
       console.log('✅ Demo data setup complete');
       return true;
-
     } catch (error) {
-      console.error('❌ Error setting up demo data:', error);
+      console.error('❌ Error setting up demo data:',error);
       return false;
     }
   }
