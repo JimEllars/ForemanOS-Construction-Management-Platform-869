@@ -7,14 +7,15 @@ import { useStore } from '../../store';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../components/common/SafeIcon';
 
-const { FiEye, FiEyeOff, FiInfo } = FiIcons;
+const { FiEye, FiEyeOff, FiInfo, FiRefreshCw } = FiIcons;
 
 const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('demo@foremanos.com');
   const [password, setPassword] = useState('demo123456');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const { login, isLoading, error, clearError } = useStore();
+  const [isCreatingDemo, setIsCreatingDemo] = useState(false);
+  const { login, isLoading, error, clearError, createDemoUser } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -48,6 +49,21 @@ const LoginScreen: React.FC = () => {
       navigate('/app');
     } catch (err) {
       console.error('Demo login failed:', err);
+    }
+  };
+
+  const handleSetupDemo = async () => {
+    try {
+      setIsCreatingDemo(true);
+      await createDemoUser();
+      // Small delay to let the user be created
+      setTimeout(() => {
+        handleDemoLogin();
+      }, 1000);
+    } catch (err) {
+      console.error('Demo setup failed:', err);
+    } finally {
+      setIsCreatingDemo(false);
     }
   };
 
@@ -131,9 +147,27 @@ const LoginScreen: React.FC = () => {
 
             {error && (
               <div className="bg-danger-50 border border-danger-200 text-danger-700 px-4 py-3 rounded-md">
-                <div className="flex items-center">
-                  <SafeIcon icon={FiInfo} className="w-5 h-5 mr-2" />
-                  {error}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <SafeIcon icon={FiInfo} className="w-5 h-5 mr-2" />
+                    <span>{error}</span>
+                  </div>
+                  {error.includes('Demo user') && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSetupDemo}
+                      disabled={isCreatingDemo}
+                      className="ml-2"
+                    >
+                      <SafeIcon 
+                        icon={FiRefreshCw} 
+                        className={`w-3 h-3 mr-1 ${isCreatingDemo ? 'animate-spin' : ''}`}
+                      />
+                      Setup Demo
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
@@ -151,19 +185,35 @@ const LoginScreen: React.FC = () => {
                 <span className="w-full border-t border-secondary-300" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-secondary-500">Or try demo</span>
+                <span className="bg-white px-2 text-secondary-500">Quick Access</span>
               </div>
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleDemoLogin}
-              disabled={isLoading}
-            >
-              Try Demo Account
-            </Button>
+            <div className="space-y-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleDemoLogin}
+                disabled={isLoading}
+              >
+                Try Demo Account
+              </Button>
+              
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-sm"
+                onClick={handleSetupDemo}
+                disabled={isCreatingDemo || isLoading}
+              >
+                <SafeIcon 
+                  icon={FiRefreshCw} 
+                  className={`w-4 h-4 mr-2 ${isCreatingDemo ? 'animate-spin' : ''}`}
+                />
+                {isCreatingDemo ? 'Setting up Demo...' : 'Setup Demo Account'}
+              </Button>
+            </div>
 
             <div className="text-center">
               <Link
@@ -182,7 +232,7 @@ const LoginScreen: React.FC = () => {
               <p><strong>Password:</strong> demo123456</p>
             </div>
             <p className="text-xs text-primary-600 mt-2">
-              Use these credentials to explore ForemanOS features
+              Click "Setup Demo Account" if login fails
             </p>
           </div>
         </CardContent>

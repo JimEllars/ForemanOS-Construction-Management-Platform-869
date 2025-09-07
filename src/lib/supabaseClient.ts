@@ -25,12 +25,31 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 // Enhanced connection test with better error handling
 const testConnection = async () => {
   try {
-    const { data, error } = await supabase.from('companies_fos2025').select('count').limit(1);
+    console.log('🔍 Testing Supabase connection...');
+    
+    // Test basic connection
+    const { data, error } = await supabase
+      .from('companies_fos2025')
+      .select('count')
+      .limit(1);
+    
     if (error) {
-      console.error('Supabase connection test failed:', error);
+      console.error('❌ Supabase connection test failed:', error);
       return false;
     }
+    
     console.log('✅ Supabase: Connected successfully to', SUPABASE_URL);
+    
+    // Test auth status
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.warn('⚠️ Session check warning:', sessionError);
+    } else if (session) {
+      console.log('✅ Active session found for:', session.user?.email);
+    } else {
+      console.log('ℹ️ No active session');
+    }
+    
     return true;
   } catch (error) {
     console.error('❌ Supabase connection error:', error);
