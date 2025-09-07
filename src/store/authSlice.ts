@@ -74,26 +74,35 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
     try {
       console.log('🔍 Loading user profile for:', data.user.email);
 
-      // Fetch user profile and associated company data.
+      // STEP 1: Fetch the user's profile first.
       const { data: profile, error: profileError } = await supabase
         .from('profiles_fos2025')
-        .select(`
-          *,
-          companies_fos2025 (*)
-        `)
+        .select('*') // Select all columns from the profile
         .eq('id', data.user.id)
         .single();
 
-      // If there's an error or no profile is found, stop the process.
       if (profileError || !profile) {
         console.error('❌ Profile fetch error:', profileError);
-        throw new Error('Your account has been authenticated, but we could not find a user profile. Please contact support.');
+        throw new Error('Could not find a user profile for your account. Please contact support.');
       }
 
-      // If the profile is found, set the user and company data.
+      // STEP 2: Fetch the company data separately using the company_id from the profile.
+      const { data: company, error: companyError } = await supabase
+        .from('companies_fos2025')
+        .select('*')
+        .eq('id', profile.company_id)
+        .single();
+
+      if (companyError || !company) {
+          console.error('❌ Company fetch error:', companyError);
+          throw new Error('Could not load company data associated with your profile. Please contact support.');
+      }
+
+      // Combine the data and set the state.
+      const profileWithCompany = { ...profile, companies_fos2025: company };
       set({
-        user: profile,
-        company: profile.companies_fos2025,
+        user: profileWithCompany,
+        company: company,
         session: data.session,
         isAuthenticated: true,
       });
