@@ -3,10 +3,17 @@ import {useStore} from '../store';
 import {projectService} from '../services/projectService';
 import {taskService} from '../services/taskService';
 import {clientService} from '../services/clientService';
-import {demoDataService} from '../services/demoDataService';
 
 export const useSupabaseData = () => {
-  const {user, company, isAuthenticated, setProjects, setTasks, setClients, setLoading} = useStore();
+  const {
+    user,
+    company,
+    isAuthenticated,
+    setProjects,
+    setTasks,
+    setClients,
+    setLoading
+  } = useStore();
 
   useEffect(() => {
     if (isAuthenticated && company?.id) {
@@ -18,12 +25,6 @@ export const useSupabaseData = () => {
     try {
       console.log('🔄 Loading all data for company:', company?.id);
       setLoading(true);
-
-      // If it's the demo company, ensure demo data exists
-      if (company?.id === 'demo-company-fos2025') {
-        console.log('🎭 Setting up demo data...');
-        await demoDataService.ensureDemoDataExists();
-      }
 
       // Load all data in parallel with better error handling
       const results = await Promise.allSettled([

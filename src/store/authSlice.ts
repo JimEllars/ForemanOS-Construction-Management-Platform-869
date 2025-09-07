@@ -43,7 +43,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
       if (error) {
         console.error('❌ Supabase auth error:', error);
-        
         // Provide more specific error messages
         let errorMessage = error.message;
         if (error.message.includes('Invalid login credentials')) {
@@ -53,7 +52,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         } else if (error.message.includes('Too many requests')) {
           errorMessage = 'Too many login attempts. Please wait a few minutes before trying again.';
         }
-        
         throw new Error(errorMessage);
       }
 
@@ -63,7 +61,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
       console.log('✅ Authentication successful, loading profile...');
       await get().handleSuccessfulLogin(data);
-
     } catch (error: any) {
       console.error('❌ Login failed:', error);
       set({error: error.message});
@@ -76,7 +73,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   handleSuccessfulLogin: async (data: any) => {
     try {
       console.log('🔍 Loading user profile for:', data.user.email);
-      
+
       // Fetch user profile and company data
       const {data: profile, error: profileError} = await supabase
         .from('profiles_fos2025')
@@ -89,51 +86,26 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
       if (profileError) {
         console.error('❌ Profile fetch error:', profileError);
-        
         // If profile doesn't exist, create one
         if (profileError.code === 'PGRST116') {
           console.log('📝 Profile not found, creating new profile...');
-          
           try {
-            // For demo user, use existing company, for others create new
-            let companyId = 'demo-company-fos2025';
-            let companyData = null;
+            // Create new company
+            console.log('📝 Creating new company for user...');
+            const {data: newCompany, error: companyError} = await supabase
+              .from('companies_fos2025')
+              .insert({
+                name: `${data.user.email?.split('@')[0]} Company`,
+                plan: 'free',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .select()
+              .single();
 
-            if (data.user.email !== 'demo@foremanos.com') {
-              console.log('📝 Creating new company for user...');
-              
-              const {data: newCompany, error: companyError} = await supabase
-                .from('companies_fos2025')
-                .insert({
-                  name: `${data.user.email?.split('@')[0]} Company`,
-                  plan: 'free',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                })
-                .select()
-                .single();
-
-              if (companyError) {
-                console.error('❌ Company creation error:', companyError);
-                throw new Error(`Failed to create company profile: ${companyError.message}`);
-              }
-              
-              companyId = newCompany.id;
-              companyData = newCompany;
-            } else {
-              // For demo user, fetch existing demo company
-              const {data: demoCompany, error: demoCompanyError} = await supabase
-                .from('companies_fos2025')
-                .select('*')
-                .eq('id', 'demo-company-fos2025')
-                .single();
-              
-              if (demoCompanyError) {
-                console.error('❌ Demo company fetch error:', demoCompanyError);
-                throw new Error('Demo company not found. Please contact support.');
-              }
-              
-              companyData = demoCompany;
+            if (companyError) {
+              console.error('❌ Company creation error:', companyError);
+              throw new Error(`Failed to create company profile: ${companyError.message}`);
             }
 
             // Create the user profile
@@ -145,7 +117,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
                 email: data.user.email,
                 name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
                 role: 'admin',
-                company_id: companyId,
+                company_id: newCompany.id,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               })
@@ -160,19 +132,18 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
             // Set the user data with company information
             const profileWithCompany = {
               ...newProfile,
-              companies_fos2025: companyData
+              companies_fos2025: newCompany
             };
 
             set({
               user: profileWithCompany,
-              company: companyData,
+              company: newCompany,
               session: data.session,
               isAuthenticated: true,
             });
 
             console.log('✅ Profile created and user logged in successfully');
             return;
-
           } catch (creationError: any) {
             console.error('❌ Profile/Company creation failed:', creationError);
             throw new Error(`Account setup failed: ${creationError.message}`);
@@ -196,7 +167,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       } else {
         throw new Error('Profile data is empty despite successful fetch.');
       }
-
     } catch (error: any) {
       console.error('❌ handleSuccessfulLogin failed:', error);
       throw error;
@@ -274,7 +244,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
         console.log('✅ User registered successfully');
       }
-
     } catch (error: any) {
       console.error('❌ Registration failed:', error);
       set({error: error.message});
