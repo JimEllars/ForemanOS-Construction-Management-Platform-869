@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useStore } from './store';
 import { supabase } from './lib/supabaseClient';
@@ -26,13 +26,16 @@ const TimeTrackingScreen = () => <div className="p-6">Time Tracking Screen - Com
 const DocumentsScreen = () => <div className="p-6">Documents Screen - Coming Soon</div>;
 
 function App() {
+  // ✅ FIXED: Separate state for initial session check
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [initializationError, setInitializationError] = useState<string | null>(null);
+  
   const { 
     isAuthenticated, 
     isLoading, 
     setUser, 
     setCompany, 
     setSession, 
-    setLoading, 
     setOnlineStatus, 
     clearError, 
     handleSuccessfulLogin 
@@ -42,43 +45,58 @@ function App() {
   useSupabaseData();
 
   useEffect(() => {
+    let mounted = true; // Prevent state updates if component unmounts
+    let timeoutId: NodeJS.Timeout;
+
     // Clear any errors on app start
     clearError();
+    setInitializationError(null);
+
+    // ✅ BULLETPROOF: Set a maximum timeout for initialization
+    const initTimeout = setTimeout(() => {
+      if (mounted && isCheckingSession) {
+        console.warn('⚠️ Session check taking too long, proceeding anyway...');
+        setIsCheckingSession(false);
+        setInitializationError('Session check timed out, but you can still proceed.');
+      }
+    }, 10000); // 10 second maximum wait
 
     // Check initial session
     const checkSession = async () => {
       try {
         console.log('🔍 Checking existing session...');
-        setLoading(true);
         
         const { data: { session }, error } = await supabase.auth.getSession();
 
+        if (!mounted) return; // Component was unmounted
+
         if (error) {
           console.error('❌ Session check error:', error);
-          setLoading(false);
+          // Don't treat session errors as fatal - user can still log in
+          setInitializationError(`Session check failed: ${error.message}`);
           return;
         }
 
         if (session?.user) {
           console.log('✅ Found existing session for:', session.user.email);
-          // Use the same handleSuccessfulLogin function from authSlice
-          // This ensures consistency between login and session restoration
-          try {
-            await handleSuccessfulLogin({ user: session.user, session });
-            console.log('✅ Session restored successfully');
-          } catch (profileError) {
-            console.error('❌ Failed to restore session profile:', profileError);
-            // Clear the session if profile loading fails
-            await supabase.auth.signOut();
-            setLoading(false);
-          }
+          // The onAuthStateChange listener will handle this automatically
+          // No need to call handleSuccessfulLogin here to avoid duplicate calls
         } else {
-          console.log('ℹ️ No existing session found');
-          setLoading(false);
+          console.log('ℹ️ No existing session found - user needs to log in');
         }
       } catch (error) {
         console.error('❌ Session check error:', error);
-        setLoading(false);
+        if (mounted) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          setInitializationError(`Failed to check session: ${errorMessage}`);
+        }
+      } finally {
+        // ✅ CRITICAL FIX: Always clear the initial loading state
+        if (mounted) {
+          clearTimeout(initTimeout);
+          setIsCheckingSession(false);
+          console.log('✅ Initial session check completed');
+        }
       }
     };
 
@@ -87,6 +105,8 @@ function App() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
+
         console.log('🔄 Auth state changed:', event, session?.user?.email);
 
         if (event === 'SIGNED_IN' && session?.user) {
@@ -95,30 +115,41 @@ function App() {
             await handleSuccessfulLogin({ user: session.user, session });
           } catch (error) {
             console.error('❌ Failed to handle sign in:', error);
-            setLoading(false);
+            // Don't prevent app from working if profile loading fails
+            if (mounted) {
+              setInitializationError('Profile loading failed, but authentication succeeded.');
+            }
           }
         } else if (event === 'SIGNED_OUT') {
           console.log('👋 User signed out');
-          setUser(null);
-          setCompany(null);
-          setSession(null);
-          setLoading(false);
+          if (mounted) {
+            setUser(null);
+            setCompany(null);
+            setSession(null);
+            setInitializationError(null);
+          }
         } else if (event === 'TOKEN_REFRESHED') {
           console.log('🔄 Token refreshed');
-          setSession(session);
+          if (mounted) {
+            setSession(session);
+          }
         }
       }
     );
 
     // Listen for online/offline status
     const handleOnline = () => {
-      console.log('🌐 Back online');
-      setOnlineStatus(true);
+      if (mounted) {
+        console.log('🌐 Back online');
+        setOnlineStatus(true);
+      }
     };
 
     const handleOffline = () => {
-      console.log('📴 Gone offline');
-      setOnlineStatus(false);
+      if (mounted) {
+        console.log('📴 Gone offline');
+        setOnlineStatus(false);
+      }
     };
 
     window.addEventListener('online', handleOnline);
@@ -136,51 +167,61 @@ function App() {
     }
 
     return () => {
+      mounted = false;
+      clearTimeout(initTimeout);
       subscription.unsubscribe();
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [setUser, setCompany, setSession, setLoading, setOnlineStatus, clearError, handleSuccessfulLogin]);
+  }, []); // ✅ SIMPLIFIED: Empty dependency array
 
-  // Enhanced loading screen with sequential progress
-  if (isLoading) {
+  // ✅ FIXED: Show initial loading screen only during session check
+  if (isCheckingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-secondary-50">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto p-6">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-secondary-600 font-medium">Loading ForemanOS...</p>
-          <p className="text-secondary-500 text-sm mt-1">Initializing your workspace</p>
+          <p className="text-secondary-600 font-medium">Initializing ForemanOS...</p>
+          <p className="text-secondary-500 text-sm mt-1">Checking for existing session</p>
           
-          {/* Enhanced Progress steps */}
-          <div className="mt-4 bg-white rounded-lg p-4 shadow-sm border border-secondary-200 max-w-sm mx-auto">
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-secondary-600">Authenticating...</span>
-                <div className="w-3 h-3 border border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-secondary-500">Loading profile...</span>
-                <div className="w-3 h-3 border border-secondary-200 rounded-full"></div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-secondary-500">Preparing data...</span>
-                <div className="w-3 h-3 border border-secondary-200 rounded-full"></div>
-              </div>
-              <div className="pt-2 border-t border-secondary-100">
-                <div className="text-secondary-400 text-center">
-                  Sequential loading prevents race conditions
-                </div>
-              </div>
-            </div>
+          {/* Progress indicator */}
+          <div className="mt-4 w-full bg-secondary-200 rounded-full h-2">
+            <div className="bg-primary-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
           </div>
+          
+          {/* Helpful message */}
+          <p className="text-xs text-secondary-400 mt-3">
+            This should only take a moment...
+          </p>
         </div>
       </div>
     );
   }
 
+  // ✅ Show initialization error if it occurred, but still allow app to function
+  const showInitError = initializationError && !isAuthenticated;
+
+  // ✅ FIXED: Now the auth slice's isLoading only controls loading during explicit actions
+  // The main app routing will work correctly once isCheckingSession is false
+
   return (
     <ErrorBoundary>
       <Router>
+        {/* Show initialization error banner if needed */}
+        {showInitError && (
+          <div className="bg-warning-50 border-b border-warning-200 p-3 text-center">
+            <div className="flex items-center justify-center space-x-2 text-warning-700">
+              <span className="text-sm">⚠️ {initializationError}</span>
+              <button 
+                onClick={() => setInitializationError(null)}
+                className="text-warning-600 hover:text-warning-800 ml-2"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
         <Routes>
           {/* Auth Routes */}
           <Route path="/auth" element={<AuthLayout />}>

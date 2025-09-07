@@ -5,7 +5,15 @@ import { taskService } from '../services/taskService';
 import { clientService } from '../services/clientService';
 
 export const useSupabaseData = () => {
-  const { user, company, isAuthenticated, setProjects, setTasks, setClients, setLoading } = useStore();
+  const { 
+    user, 
+    company, 
+    isAuthenticated, 
+    setProjects, 
+    setTasks, 
+    setClients, 
+    setLoading 
+  } = useStore();
 
   useEffect(() => {
     if (isAuthenticated && company?.id && user?.id) {
@@ -21,6 +29,7 @@ export const useSupabaseData = () => {
         companyId: company?.id,
         userId: user?.id
       });
+      
       // Reset data when not authenticated
       if (!isAuthenticated) {
         setProjects([]);
@@ -41,6 +50,12 @@ export const useSupabaseData = () => {
     try {
       console.log('🔄 Starting sequential data load for company:', company.id);
       setLoading(true);
+
+      // ✅ BULLETPROOF: Set a timeout for data loading
+      const loadingTimeout = setTimeout(() => {
+        console.warn('⚠️ Data loading taking too long, completing anyway...');
+        setLoading(false);
+      }, 15000); // 15 second timeout
 
       // Step 1: Fetch clients (this can run in parallel as it's independent)
       console.log('📋 Starting clients fetch in parallel...');
@@ -64,6 +79,9 @@ export const useSupabaseData = () => {
       setClients(clients);
       console.log('✅ Clients loaded successfully:', clients.length);
 
+      // Clear the timeout since we completed successfully
+      clearTimeout(loadingTimeout);
+
       console.log('🎉 All data loading completed successfully');
       console.log('📊 Final data summary:', {
         projects: projects.length,
@@ -83,11 +101,15 @@ export const useSupabaseData = () => {
         });
       }
 
-      // On failure, set all data to empty arrays to prevent a broken UI state
+      // ✅ BULLETPROOF: On failure, set all data to empty arrays to prevent a broken UI state
       console.log('🔄 Resetting all data arrays due to error...');
       setProjects([]);
       setTasks([]);
       setClients([]);
+
+      // Don't throw the error - let the app continue to work
+      console.log('🔄 App will continue to work despite data loading error');
+
     } finally {
       setLoading(false);
       console.log('✅ Data loading sequence completed (success or failure)');

@@ -29,7 +29,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   company: null,
   session: null,
   isAuthenticated: false,
-  isLoading: false, // IMPORTANT: Start with false to show login screen
+  isLoading: false, // ✅ FIXED: Start with false - only show loading during explicit actions
   error: null,
 
   login: async (email: string, password: string) => {
@@ -142,7 +142,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
             session: data.session,
             isAuthenticated: true,
             error: null,
-            isLoading: false, // IMPORTANT: Set loading to false
+            isLoading: false,
           });
 
           console.log('✅ New user profile created and logged in successfully:', newProfile.name);
@@ -206,7 +206,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
           session: data.session,
           isAuthenticated: true,
           error: null,
-          isLoading: false, // IMPORTANT: Set loading to false
+          isLoading: false,
         });
 
         console.log('✅ Default company created and user logged in successfully');
@@ -269,7 +269,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
           session: data.session,
           isAuthenticated: true,
           error: null,
-          isLoading: false, // IMPORTANT: Set loading to false
+          isLoading: false,
         });
 
         console.log('✅ Default company created and user logged in successfully');
@@ -290,7 +290,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         session: data.session,
         isAuthenticated: true,
         error: null,
-        isLoading: false, // IMPORTANT: Set loading to false
+        isLoading: false,
       });
 
       console.log('✅ User logged in successfully:', profile.name);
@@ -300,7 +300,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       set({
         error: error.message,
         isAuthenticated: false,
-        isLoading: false, // IMPORTANT: Set loading to false even on error
+        isLoading: false,
       });
       throw error;
     }
@@ -441,7 +441,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         session: null,
         isAuthenticated: false,
         error: null,
-        isLoading: false, // IMPORTANT: Set loading to false
+        isLoading: false,
       });
       console.log('✅ Logged out successfully');
     } catch (error: any) {
