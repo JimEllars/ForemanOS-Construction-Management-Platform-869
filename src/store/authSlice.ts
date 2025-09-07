@@ -20,7 +20,6 @@ export interface AuthSlice {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
-  createDemoUser: () => Promise<void>;
 }
 
 export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
@@ -31,61 +30,11 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   isLoading: true,
   error: null,
 
-  createDemoUser: async () => {
-    try {
-      console.log('🔧 Creating demo user...');
-      
-      // First, create demo company
-      const { data: companyData, error: companyError } = await supabase
-        .from('companies_fos2025')
-        .upsert({
-          id: 'demo-company-fos2025',
-          name: 'Demo Construction Company',
-          plan: 'free',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (companyError) {
-        console.error('❌ Demo company creation error:', companyError);
-      }
-
-      // Then try to sign up the demo user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: 'demo@foremanos.com',
-        password: 'demo123456',
-        options: {
-          data: {
-            name: 'Demo User',
-            company_name: 'Demo Construction Company'
-          }
-        }
-      });
-
-      if (authError && !authError.message.includes('already registered')) {
-        console.error('❌ Demo user creation error:', authError);
-        throw authError;
-      }
-
-      console.log('✅ Demo user setup completed');
-    } catch (error) {
-      console.error('❌ Demo user creation failed:', error);
-    }
-  },
-
   login: async (email: string, password: string) => {
     try {
       set({ isLoading: true, error: null });
-      
       console.log('🔐 Attempting login for:', email);
-      
-      // If it's the demo user, try to create it first
-      if (email.toLowerCase() === 'demo@foremanos.com') {
-        await get().createDemoUser();
-      }
-      
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
@@ -93,37 +42,15 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
       if (error) {
         console.error('❌ Login error:', error);
-        
-        // If user not found and it's demo, try to create it
-        if (error.message.includes('Invalid login credentials') && email.toLowerCase() === 'demo@foremanos.com') {
-          console.log('🔧 Demo user not found, creating...');
-          await get().createDemoUser();
-          
-          // Try login again
-          const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
-            email: email.trim().toLowerCase(),
-            password,
-          });
-          
-          if (retryError) {
-            throw new Error('Demo user login failed. Please try again in a moment.');
-          }
-          
-          if (retryData.user) {
-            await get().handleSuccessfulLogin(retryData);
-            return;
-          }
-        }
-        
         throw new Error(error.message);
       }
 
       if (!data.user) {
-        throw new Error('No user data returned');
+        throw new Error('Login failed: No user data returned.');
       }
 
       await get().handleSuccessfulLogin(data);
-      
+
     } catch (error: any) {
       console.error('❌ Login failed:', error);
       set({ error: error.message });
@@ -135,7 +62,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
   handleSuccessfulLogin: async (data: any) => {
     console.log('✅ Login successful, fetching profile...');
-
+    
     // Fetch user profile and company data
     const { data: profile, error: profileError } = await supabase
       .from('profiles_fos2025')
@@ -153,7 +80,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       if (profileError.code === 'PGRST116') {
         console.log('📝 Creating missing profile...');
         
-        // Get or create company
+        // For demo user, use existing company, for others create new
         let companyId = 'demo-company-fos2025';
         
         if (data.user.email !== 'demo@foremanos.com') {
@@ -172,7 +99,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
             console.error('❌ Company creation error:', companyError);
             throw new Error('Failed to create company profile');
           }
-          
           companyId = newCompany.id;
         }
 
@@ -227,18 +153,17 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   register: async (email: string, password: string, name: string, companyName: string) => {
     try {
       set({ isLoading: true, error: null });
-      
+
       // Validate password strength
       if (password.length < 8) {
         throw new Error('Password must be at least 8 characters long');
       }
-      
       if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
         throw new Error('Password must contain at least one uppercase letter, one lowercase letter, and one number');
       }
 
       console.log('📝 Registering new user:', email);
-      
+
       // First create a company
       const { data: companyData, error: companyError } = await supabase
         .from('companies_fos2025')
@@ -291,9 +216,10 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         if (profileError) {
           console.error('❌ Profile creation error:', profileError);
         }
-        
+
         console.log('✅ User registered successfully');
       }
+
     } catch (error: any) {
       console.error('❌ Registration failed:', error);
       set({ error: error.message });
@@ -306,7 +232,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   resetPassword: async (email: string) => {
     try {
       set({ isLoading: true, error: null });
-      
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       });
@@ -316,6 +242,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       }
 
       console.log('✅ Password reset email sent');
+
     } catch (error: any) {
       console.error('❌ Password reset failed:', error);
       set({ error: error.message });
@@ -328,7 +255,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   updatePassword: async (newPassword: string) => {
     try {
       set({ isLoading: true, error: null });
-      
+
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -338,6 +265,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       }
 
       console.log('✅ Password updated successfully');
+
     } catch (error: any) {
       console.error('❌ Password update failed:', error);
       set({ error: error.message });
