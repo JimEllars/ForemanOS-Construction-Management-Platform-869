@@ -1,8 +1,8 @@
-import React,{useEffect} from 'react';
-import {HashRouter as Router,Routes,Route,Navigate} from 'react-router-dom';
-import {useStore} from './store';
-import {supabase} from './lib/supabaseClient';
-import {useSupabaseData} from './hooks/useSupabaseData';
+import React, { useEffect } from 'react';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useStore } from './store';
+import { supabase } from './lib/supabaseClient';
+import { useSupabaseData } from './hooks/useSupabaseData';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 
 // Layouts
@@ -20,43 +20,53 @@ import ProjectsScreen from './features/projects/ProjectsScreen';
 import ClientsScreen from './features/clients/ClientsScreen';
 
 // Placeholder screens
-const TasksScreen=()=> <div className="p-6">Tasks Screen - Coming Soon</div>;
-const DailyLogsScreen=()=> <div className="p-6">Daily Logs Screen - Coming Soon</div>;
-const TimeTrackingScreen=()=> <div className="p-6">Time Tracking Screen - Coming Soon</div>;
-const DocumentsScreen=()=> <div className="p-6">Documents Screen - Coming Soon</div>;
+const TasksScreen = () => <div className="p-6">Tasks Screen - Coming Soon</div>;
+const DailyLogsScreen = () => <div className="p-6">Daily Logs Screen - Coming Soon</div>;
+const TimeTrackingScreen = () => <div className="p-6">Time Tracking Screen - Coming Soon</div>;
+const DocumentsScreen = () => <div className="p-6">Documents Screen - Coming Soon</div>;
 
 function App() {
-  const {isAuthenticated,isLoading,setUser,setCompany,setSession,setLoading,setOnlineStatus,clearError,handleSuccessfulLogin}=useStore();
+  const { 
+    isAuthenticated, 
+    isLoading, 
+    setUser, 
+    setCompany, 
+    setSession, 
+    setLoading, 
+    setOnlineStatus, 
+    clearError, 
+    handleSuccessfulLogin 
+  } = useStore();
 
   // Load data when authenticated
   useSupabaseData();
 
-  useEffect(()=> {
+  useEffect(() => {
     // Clear any errors on app start
     clearError();
 
     // Check initial session
-    const checkSession=async ()=> {
+    const checkSession = async () => {
       try {
         console.log('🔍 Checking existing session...');
-        const {data: {session},error}=await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
-          console.error('❌ Session check error:',error);
+          console.error('❌ Session check error:', error);
           setLoading(false);
           return;
         }
 
         if (session?.user) {
-          console.log('✅ Found existing session for:',session.user.email);
+          console.log('✅ Found existing session for:', session.user.email);
           
           // Use the same handleSuccessfulLogin function from authSlice
           // This ensures consistency between login and session restoration
           try {
-            await handleSuccessfulLogin({user: session.user, session});
+            await handleSuccessfulLogin({ user: session.user, session });
             console.log('✅ Session restored successfully');
           } catch (profileError) {
-            console.error('❌ Failed to restore session profile:',profileError);
+            console.error('❌ Failed to restore session profile:', profileError);
             // Clear the session if profile loading fails
             await supabase.auth.signOut();
           }
@@ -64,7 +74,7 @@ function App() {
           console.log('ℹ️ No existing session found');
         }
       } catch (error) {
-        console.error('❌ Session check error:',error);
+        console.error('❌ Session check error:', error);
       } finally {
         setLoading(false);
       }
@@ -73,23 +83,23 @@ function App() {
     checkSession();
 
     // Listen for auth changes
-    const {data: {subscription}}=supabase.auth.onAuthStateChange(
-      async (event,session)=> {
-        console.log('🔄 Auth state changed:',event,session?.user?.email);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔄 Auth state changed:', event, session?.user?.email);
 
-        if (event==='SIGNED_IN' && session?.user) {
-          console.log('✅ User signed in:',session.user.email);
+        if (event === 'SIGNED_IN' && session?.user) {
+          console.log('✅ User signed in:', session.user.email);
           try {
-            await handleSuccessfulLogin({user: session.user, session});
+            await handleSuccessfulLogin({ user: session.user, session });
           } catch (error) {
-            console.error('❌ Failed to handle sign in:',error);
+            console.error('❌ Failed to handle sign in:', error);
           }
-        } else if (event==='SIGNED_OUT') {
+        } else if (event === 'SIGNED_OUT') {
           console.log('👋 User signed out');
           setUser(null);
           setCompany(null);
           setSession(null);
-        } else if (event==='TOKEN_REFRESHED') {
+        } else if (event === 'TOKEN_REFRESHED') {
           console.log('🔄 Token refreshed');
           setSession(session);
         }
@@ -97,35 +107,35 @@ function App() {
     );
 
     // Listen for online/offline status
-    const handleOnline=()=> {
+    const handleOnline = () => {
       console.log('🌐 Back online');
       setOnlineStatus(true);
     };
-    const handleOffline=()=> {
+    const handleOffline = () => {
       console.log('📴 Gone offline');
       setOnlineStatus(false);
     };
 
-    window.addEventListener('online',handleOnline);
-    window.addEventListener('offline',handleOffline);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     // Register service worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
-        .then((registration)=> {
-          console.log('✅ Service Worker registered:',registration);
+        .then((registration) => {
+          console.log('✅ Service Worker registered:', registration);
         })
-        .catch((registrationError)=> {
-          console.log('❌ Service Worker registration failed:',registrationError);
+        .catch((registrationError) => {
+          console.log('❌ Service Worker registration failed:', registrationError);
         });
     }
 
-    return ()=> {
+    return () => {
       subscription.unsubscribe();
-      window.removeEventListener('online',handleOnline);
-      window.removeEventListener('offline',handleOffline);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
-  },[setUser,setCompany,setSession,setLoading,setOnlineStatus,clearError,handleSuccessfulLogin]);
+  }, [setUser, setCompany, setSession, setLoading, setOnlineStatus, clearError, handleSuccessfulLogin]);
 
   if (isLoading) {
     return (
