@@ -13,8 +13,32 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    flowType: 'pkce'
   },
+  global: {
+    headers: {
+      'apikey': SUPABASE_ANON_KEY
+    }
+  }
 });
 
-// Log successful connection
-console.log('Supabase: Connected to', SUPABASE_URL);
+// Enhanced connection test with better error handling
+const testConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('companies_fos2025').select('count').limit(1);
+    if (error) {
+      console.error('Supabase connection test failed:', error);
+      return false;
+    }
+    console.log('✅ Supabase: Connected successfully to', SUPABASE_URL);
+    return true;
+  } catch (error) {
+    console.error('❌ Supabase connection error:', error);
+    return false;
+  }
+};
+
+// Test connection on load
+testConnection();
+
+export default supabase;

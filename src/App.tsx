@@ -11,6 +11,7 @@ import AppLayout from './layouts/AppLayout';
 // Auth Screens
 import LoginScreen from './features/auth/LoginScreen';
 import RegisterScreen from './features/auth/RegisterScreen';
+import ForgotPasswordScreen from './features/auth/ForgotPasswordScreen';
 
 // App Screens
 import DashboardScreen from './features/dashboard/DashboardScreen';
@@ -31,21 +32,35 @@ function App() {
     setCompany, 
     setSession, 
     setLoading, 
-    setOnlineStatus 
+    setOnlineStatus,
+    clearError
   } = useStore();
 
   // Load data when authenticated
   useSupabaseData();
 
   useEffect(() => {
+    // Clear any errors on app start
+    clearError();
+
     // Check initial session
     const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('🔍 Checking existing session...');
+        
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Session check error:', error);
+          setLoading(false);
+          return;
+        }
         
         if (session?.user) {
+          console.log('✅ Found existing session for:', session.user.email);
+          
           // Fetch user profile and company
-          const { data: profile, error } = await supabase
+          const { data: profile, error: profileError } = await supabase
             .from('profiles_fos2025')
             .select(`
               *,
@@ -54,14 +69,19 @@ function App() {
             .eq('id', session.user.id)
             .single();
 
-          if (!error && profile) {
+          if (!profileError && profile) {
             setUser(profile);
             setCompany(profile.companies_fos2025);
             setSession(session);
+            console.log('✅ Session restored for:', profile.name);
+          } else {
+            console.log('⚠️ No profile found, user needs to complete setup');
           }
+        } else {
+          console.log('ℹ️ No existing session found');
         }
       } catch (error) {
-        console.error('Session check error:', error);
+        console.error('❌ Session check error:', error);
       } finally {
         setLoading(false);
       }
@@ -72,9 +92,11 @@ function App() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
+        console.log('🔄 Auth state changed:', event, session?.user?.email);
         
         if (event === 'SIGNED_IN' && session?.user) {
+          console.log('✅ User signed in:', session.user.email);
+          
           const { data: profile, error } = await supabase
             .from('profiles_fos2025')
             .select(`
@@ -90,16 +112,26 @@ function App() {
             setSession(session);
           }
         } else if (event === 'SIGNED_OUT') {
+          console.log('👋 User signed out');
           setUser(null);
           setCompany(null);
           setSession(null);
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log('🔄 Token refreshed');
+          setSession(session);
         }
       }
     );
 
     // Listen for online/offline status
-    const handleOnline = () => setOnlineStatus(true);
-    const handleOffline = () => setOnlineStatus(false);
+    const handleOnline = () => {
+      console.log('🌐 Back online');
+      setOnlineStatus(true);
+    };
+    const handleOffline = () => {
+      console.log('📴 Gone offline');
+      setOnlineStatus(false);
+    };
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -108,10 +140,10 @@ function App() {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .then((registration) => {
-          console.log('SW registered: ', registration);
+          console.log('✅ Service Worker registered:', registration);
         })
         .catch((registrationError) => {
-          console.log('SW registration failed: ', registrationError);
+          console.log('❌ Service Worker registration failed:', registrationError);
         });
     }
 
@@ -120,14 +152,15 @@ function App() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [setUser, setCompany, setSession, setLoading, setOnlineStatus]);
+  }, [setUser, setCompany, setSession, setLoading, setOnlineStatus, clearError]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-secondary-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-secondary-600">Loading ForemanOS...</p>
+          <p className="text-secondary-600 font-medium">Loading ForemanOS...</p>
+          <p className="text-secondary-500 text-sm mt-1">Connecting to your workspace</p>
         </div>
       </div>
     );
@@ -140,6 +173,7 @@ function App() {
         <Route path="/auth" element={<AuthLayout />}>
           <Route path="login" element={<LoginScreen />} />
           <Route path="register" element={<RegisterScreen />} />
+          <Route path="forgot-password" element={<ForgotPasswordScreen />} />
         </Route>
 
         {/* App Routes */}
