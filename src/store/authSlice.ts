@@ -9,6 +9,7 @@ export interface AuthSlice {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, companyName: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -28,7 +29,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   company: null,
   session: null,
   isAuthenticated: false,
-  isLoading: true,
+  isLoading: false, // IMPORTANT: Start with false to show login screen
   error: null,
 
   login: async (email: string, password: string) => {
@@ -44,6 +45,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       if (error) {
         console.error('❌ Supabase auth error:', error);
         let errorMessage = error.message;
+
         if (error.message.includes('Invalid login credentials')) {
           errorMessage = 'Invalid email or password. Please check your credentials and try again.';
         } else if (error.message.includes('Email not confirmed')) {
@@ -51,6 +53,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         } else if (error.message.includes('Too many requests')) {
           errorMessage = 'Too many login attempts. Please wait a few minutes before trying again.';
         }
+
         throw new Error(errorMessage);
       }
 
@@ -60,12 +63,11 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
       console.log('✅ Authentication successful, loading profile...');
       await get().handleSuccessfulLogin(data);
+
     } catch (error: any) {
       console.error('❌ Login failed:', error);
-      set({ error: error.message });
+      set({ error: error.message, isLoading: false });
       throw error;
-    } finally {
-      set({ isLoading: false });
     }
   },
 
@@ -129,13 +131,18 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
           }
 
           // Use the newly created profile and company
-          const profileWithCompany = { ...newProfile, companies_fos2025: newCompany };
+          const profileWithCompany = {
+            ...newProfile,
+            companies_fos2025: newCompany
+          };
+
           set({
             user: profileWithCompany,
             company: newCompany,
             session: data.session,
             isAuthenticated: true,
             error: null,
+            isLoading: false, // IMPORTANT: Set loading to false
           });
 
           console.log('✅ New user profile created and logged in successfully:', newProfile.name);
@@ -176,7 +183,10 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         // Update the profile with the new company_id
         const { error: updateError } = await supabase
           .from('profiles_fos2025')
-          .update({ company_id: newCompany.id, updated_at: new Date().toISOString() })
+          .update({
+            company_id: newCompany.id,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', profile.id);
 
         if (updateError) {
@@ -184,13 +194,19 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         }
 
         // Use the new company
-        const profileWithCompany = { ...profile, company_id: newCompany.id, companies_fos2025: newCompany };
+        const profileWithCompany = {
+          ...profile,
+          company_id: newCompany.id,
+          companies_fos2025: newCompany
+        };
+
         set({
           user: profileWithCompany,
           company: newCompany,
           session: data.session,
           isAuthenticated: true,
           error: null,
+          isLoading: false, // IMPORTANT: Set loading to false
         });
 
         console.log('✅ Default company created and user logged in successfully');
@@ -230,7 +246,10 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         // Update the profile with the new company_id
         const { error: updateError } = await supabase
           .from('profiles_fos2025')
-          .update({ company_id: newCompany.id, updated_at: new Date().toISOString() })
+          .update({
+            company_id: newCompany.id,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', profile.id);
 
         if (updateError) {
@@ -238,13 +257,19 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         }
 
         // Use the newly created company
-        const profileWithCompany = { ...profile, company_id: newCompany.id, companies_fos2025: newCompany };
+        const profileWithCompany = {
+          ...profile,
+          company_id: newCompany.id,
+          companies_fos2025: newCompany
+        };
+
         set({
           user: profileWithCompany,
           company: newCompany,
           session: data.session,
           isAuthenticated: true,
           error: null,
+          isLoading: false, // IMPORTANT: Set loading to false
         });
 
         console.log('✅ Default company created and user logged in successfully');
@@ -254,19 +279,29 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       console.log('✅ Company loaded successfully:', company.name);
 
       // Combine the data and set the state
-      const profileWithCompany = { ...profile, companies_fos2025: company };
+      const profileWithCompany = {
+        ...profile,
+        companies_fos2025: company
+      };
+
       set({
         user: profileWithCompany,
         company: company,
         session: data.session,
         isAuthenticated: true,
         error: null,
+        isLoading: false, // IMPORTANT: Set loading to false
       });
 
       console.log('✅ User logged in successfully:', profile.name);
+
     } catch (error: any) {
       console.error('❌ handleSuccessfulLogin failed:', error);
-      set({ error: error.message, isAuthenticated: false, isLoading: false });
+      set({
+        error: error.message,
+        isAuthenticated: false,
+        isLoading: false, // IMPORTANT: Set loading to false even on error
+      });
       throw error;
     }
   },
@@ -279,6 +314,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       if (password.length < 8) {
         throw new Error('Password must be at least 8 characters long');
       }
+
       if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
         throw new Error('Password must contain at least one uppercase letter, one lowercase letter, and one number');
       }
@@ -341,6 +377,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
         console.log('✅ User registered successfully');
       }
+
     } catch (error: any) {
       console.error('❌ Registration failed:', error);
       set({ error: error.message });
@@ -353,6 +390,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   resetPassword: async (email: string) => {
     try {
       set({ isLoading: true, error: null });
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       });
@@ -374,6 +412,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   updatePassword: async (newPassword: string) => {
     try {
       set({ isLoading: true, error: null });
+
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -402,11 +441,12 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         session: null,
         isAuthenticated: false,
         error: null,
+        isLoading: false, // IMPORTANT: Set loading to false
       });
       console.log('✅ Logged out successfully');
     } catch (error: any) {
       console.error('❌ Logout error:', error);
-      set({ error: error.message });
+      set({ error: error.message, isLoading: false });
     }
   },
 

@@ -49,6 +49,8 @@ function App() {
     const checkSession = async () => {
       try {
         console.log('🔍 Checking existing session...');
+        setLoading(true);
+        
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
@@ -68,13 +70,14 @@ function App() {
             console.error('❌ Failed to restore session profile:', profileError);
             // Clear the session if profile loading fails
             await supabase.auth.signOut();
+            setLoading(false);
           }
         } else {
           console.log('ℹ️ No existing session found');
+          setLoading(false);
         }
       } catch (error) {
         console.error('❌ Session check error:', error);
-      } finally {
         setLoading(false);
       }
     };
@@ -92,12 +95,14 @@ function App() {
             await handleSuccessfulLogin({ user: session.user, session });
           } catch (error) {
             console.error('❌ Failed to handle sign in:', error);
+            setLoading(false);
           }
         } else if (event === 'SIGNED_OUT') {
           console.log('👋 User signed out');
           setUser(null);
           setCompany(null);
           setSession(null);
+          setLoading(false);
         } else if (event === 'TOKEN_REFRESHED') {
           console.log('🔄 Token refreshed');
           setSession(session);
@@ -137,6 +142,7 @@ function App() {
     };
   }, [setUser, setCompany, setSession, setLoading, setOnlineStatus, clearError, handleSuccessfulLogin]);
 
+  // Enhanced loading screen with sequential progress
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-secondary-50">
@@ -145,20 +151,25 @@ function App() {
           <p className="text-secondary-600 font-medium">Loading ForemanOS...</p>
           <p className="text-secondary-500 text-sm mt-1">Initializing your workspace</p>
           
-          {/* Progress steps */}
+          {/* Enhanced Progress steps */}
           <div className="mt-4 bg-white rounded-lg p-4 shadow-sm border border-secondary-200 max-w-sm mx-auto">
-            <div className="space-y-2 text-xs text-secondary-600">
+            <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span>Authenticating...</span>
+                <span className="text-secondary-600">Authenticating...</span>
                 <div className="w-3 h-3 border border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
               </div>
               <div className="flex items-center justify-between">
-                <span>Loading profile...</span>
+                <span className="text-secondary-500">Loading profile...</span>
                 <div className="w-3 h-3 border border-secondary-200 rounded-full"></div>
               </div>
               <div className="flex items-center justify-between">
-                <span>Preparing data...</span>
+                <span className="text-secondary-500">Preparing data...</span>
                 <div className="w-3 h-3 border border-secondary-200 rounded-full"></div>
+              </div>
+              <div className="pt-2 border-t border-secondary-100">
+                <div className="text-secondary-400 text-center">
+                  Sequential loading prevents race conditions
+                </div>
               </div>
             </div>
           </div>

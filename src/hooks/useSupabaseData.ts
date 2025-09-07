@@ -42,43 +42,64 @@ export const useSupabaseData = () => {
       console.log('🔄 Starting sequential data load for company:', company.id);
       setLoading(true);
 
-      // Step 1: Fetch clients (can be done in parallel as it's independent)
+      // Step 1: Fetch clients (this can run in parallel as it's independent)
+      console.log('📋 Starting clients fetch in parallel...');
       const clientsPromise = clientService.getClientsByCompany(company.id);
 
-      // Step 2: Fetch projects first, as tasks depend on them
-      console.log('📋 Loading projects first...');
+      // Step 2: Fetch projects first, as tasks are dependent on them
+      console.log('📋 Loading projects (required for tasks)...');
       const projects = await projectService.getProjectsByCompany(company.id);
       setProjects(projects);
-      console.log('✅ Projects loaded:', projects.length);
+      console.log('✅ Projects loaded successfully:', projects.length);
 
-      // Step 3: Now that projects are loaded, fetch tasks
-      console.log('📋 Loading tasks (depends on projects)...');
+      // Step 3: Now that we have projects, fetch their associated tasks
+      console.log('📋 Loading tasks (now that projects are available)...');
       const tasks = await taskService.getTasksByCompany(company.id);
       setTasks(tasks);
-      console.log('✅ Tasks loaded:', tasks.length);
+      console.log('✅ Tasks loaded successfully:', tasks.length);
 
-      // Step 4: Await and set clients (this was running in parallel)
-      console.log('📋 Loading clients...');
+      // Step 4: Await the clients promise and set the state
+      console.log('📋 Completing clients fetch...');
       const clients = await clientsPromise;
       setClients(clients);
-      console.log('✅ Clients loaded:', clients.length);
+      console.log('✅ Clients loaded successfully:', clients.length);
 
       console.log('🎉 All data loading completed successfully');
+      console.log('📊 Final data summary:', {
+        projects: projects.length,
+        tasks: tasks.length,
+        clients: clients.length
+      });
 
     } catch (error) {
-      console.error('❌ Critical error loading data:', error);
-      // Set all data to empty arrays on failure to prevent a broken state
+      console.error('❌ Critical error during data loading sequence:', error);
+      
+      // Provide detailed error information
+      if (error instanceof Error) {
+        console.error('❌ Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
+
+      // On failure, set all data to empty arrays to prevent a broken UI state
+      console.log('🔄 Resetting all data arrays due to error...');
       setProjects([]);
       setTasks([]);
       setClients([]);
     } finally {
       setLoading(false);
+      console.log('✅ Data loading sequence completed (success or failure)');
     }
   };
 
   const refreshData = () => {
     if (company?.id) {
+      console.log('🔄 Manual data refresh requested...');
       loadAllData();
+    } else {
+      console.warn('⚠️ Cannot refresh data: no company ID available');
     }
   };
 
