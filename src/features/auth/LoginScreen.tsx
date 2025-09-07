@@ -7,7 +7,7 @@ import { useStore } from '../../store';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../components/common/SafeIcon';
 
-const { FiEye, FiEyeOff, FiInfo, FiAlertCircle } = FiIcons;
+const { FiEye, FiEyeOff, FiInfo, FiAlertCircle, FiWifi } = FiIcons;
 
 const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -44,17 +44,25 @@ const LoginScreen: React.FC = () => {
 
     try {
       console.log('🔑 Starting login process...');
+      
+      // Clear any previous errors
+      clearError();
+      
       await login(email.trim(), password);
-      // ✅ Don't navigate here - let the useEffect handle it when isAuthenticated changes
-      console.log('🔄 Login process completed, waiting for auth state update...');
+      
+      console.log('🎉 Login completed successfully - user should be redirected');
+      
     } catch (err) {
       // Error is handled in the store
-      console.error('Login failed:', err);
+      console.error('❌ Login failed:', err);
     }
   };
 
   const getErrorIcon = () => {
     if (error?.includes('Invalid email or password')) {
+      return FiAlertCircle;
+    }
+    if (error?.includes('Database error') || error?.includes('contact support')) {
       return FiAlertCircle;
     }
     return FiInfo;
@@ -64,7 +72,36 @@ const LoginScreen: React.FC = () => {
     if (error?.includes('Invalid email or password')) {
       return 'danger';
     }
+    if (error?.includes('Database error') || error?.includes('contact support')) {
+      return 'danger';
+    }
     return 'warning';
+  };
+
+  const getErrorSuggestions = () => {
+    if (error?.includes('Invalid email or password')) {
+      return [
+        'Double-check your email and password',
+        'Use "Forgot password?" if needed',
+        'Make sure your account is confirmed'
+      ];
+    }
+    if (error?.includes('Database error') || error?.includes('contact support')) {
+      return [
+        'Check your internet connection',
+        'Try refreshing the page',
+        'Wait a moment and try again',
+        'Contact support if the issue persists'
+      ];
+    }
+    if (error?.includes('Too many requests')) {
+      return [
+        'Wait 5-10 minutes before trying again',
+        'Clear your browser cache',
+        'Try using a different browser'
+      ];
+    }
+    return [];
   };
 
   return (
@@ -85,6 +122,7 @@ const LoginScreen: React.FC = () => {
             Welcome back! Please sign in to your account.
           </p>
         </CardHeader>
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
@@ -116,9 +154,9 @@ const LoginScreen: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
-                  <SafeIcon 
-                    icon={showPassword ? FiEyeOff : FiEye} 
-                    className="w-4 h-4 text-secondary-400 hover:text-secondary-600" 
+                  <SafeIcon
+                    icon={showPassword ? FiEyeOff : FiEye}
+                    className="w-4 h-4 text-secondary-400 hover:text-secondary-600"
                   />
                 </button>
               </div>
@@ -138,8 +176,8 @@ const LoginScreen: React.FC = () => {
                 </label>
               </div>
 
-              <Link 
-                to="/auth/forgot-password" 
+              <Link
+                to="/auth/forgot-password"
                 className="text-sm text-primary-600 hover:text-primary-500"
               >
                 Forgot password?
@@ -149,17 +187,30 @@ const LoginScreen: React.FC = () => {
             {error && (
               <div className={`bg-${getErrorColor()}-50 border border-${getErrorColor()}-200 text-${getErrorColor()}-700 px-4 py-3 rounded-md`}>
                 <div className="flex items-start">
-                  <SafeIcon icon={getErrorIcon()} className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-                  <div>
+                  <SafeIcon
+                    icon={getErrorIcon()}
+                    className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0"
+                  />
+                  <div className="flex-1">
                     <p className="font-medium">{error}</p>
-                    {error.includes('Invalid email or password') && (
+                    
+                    {getErrorSuggestions().length > 0 && (
                       <div className="mt-2 text-sm">
                         <p>Troubleshooting tips:</p>
                         <ul className="list-disc list-inside mt-1 space-y-1">
-                          <li>Double-check your email and password</li>
-                          <li>Use "Forgot password?" if needed</li>
-                          <li>Make sure your account is confirmed</li>
+                          {getErrorSuggestions().map((suggestion, index) => (
+                            <li key={index}>{suggestion}</li>
+                          ))}
                         </ul>
+                      </div>
+                    )}
+
+                    {(error?.includes('Database error') || error?.includes('contact support')) && (
+                      <div className="mt-3 p-2 bg-white bg-opacity-50 rounded border">
+                        <p className="text-xs font-medium">Need immediate help?</p>
+                        <p className="text-xs">
+                          Try creating a new account or contact support with this error message.
+                        </p>
                       </div>
                     )}
                   </div>
@@ -172,12 +223,25 @@ const LoginScreen: React.FC = () => {
               className="w-full"
               disabled={isLoading || !email.trim() || !password.trim()}
             >
-              {isLoading ? 'Signing In...' : 'Sign In'}
+              {isLoading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Signing In...
+                </div>
+              ) : (
+                'Sign In'
+              )}
             </Button>
 
+            {/* Connection status indicator */}
+            <div className="flex items-center justify-center space-x-2 text-xs text-secondary-500">
+              <SafeIcon icon={FiWifi} className="w-3 h-3" />
+              <span>Connected to ForemanOS</span>
+            </div>
+
             <div className="text-center">
-              <Link 
-                to="/auth/register" 
+              <Link
+                to="/auth/register"
                 className="text-sm text-primary-600 hover:text-primary-500"
               >
                 Don't have an account? <span className="font-medium">Sign up</span>

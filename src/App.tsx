@@ -49,13 +49,13 @@ function App() {
     // Clear any errors on app start
     clearError();
 
-    // ✅ BULLETPROOF: Maximum 8 second timeout for session check
+    // ✅ BULLETPROOF: Maximum 10 second timeout for session check
     const initTimeout = setTimeout(() => {
       if (mounted && isCheckingSession) {
         console.warn('⚠️ Session check timeout reached, proceeding to app...');
         setIsCheckingSession(false);
       }
-    }, 8000);
+    }, 10000);
 
     // Check initial session
     const checkSession = async () => {
@@ -99,25 +99,16 @@ function App() {
 
     checkSession();
 
-    // Listen for auth changes
+    // ✅ SIMPLIFIED: Listen for auth changes but don't duplicate login handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
 
         console.log('🔄 Auth state changed:', event, session?.user?.email);
 
-        // ✅ CRITICAL FIX: Only handle auth state changes if not already handling auth
-        if (event === 'SIGNED_IN' && session?.user && !isHandlingAuth) {
-          console.log('✅ User signed in via auth state change, loading profile data...');
-          isHandlingAuth = true;
-          try {
-            await handleSuccessfulLogin({ user: session.user, session });
-          } catch (error) {
-            console.error('❌ Failed to handle sign in:', error);
-          } finally {
-            isHandlingAuth = false;
-          }
-        } else if (event === 'SIGNED_OUT') {
+        // ✅ CRITICAL FIX: Only handle SIGNED_OUT events here
+        // Login is handled directly in the login function to prevent race conditions
+        if (event === 'SIGNED_OUT') {
           console.log('👋 User signed out');
           if (mounted) {
             isHandlingAuth = false; // Reset the flag
@@ -172,7 +163,7 @@ function App() {
     };
   }, []);
 
-  // ✅ FIXED: Show loading only during initial session check
+  // ✅ IMPROVED: Better loading screen with timeout indication
   if (isCheckingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-secondary-50">
@@ -182,12 +173,19 @@ function App() {
           <p className="text-secondary-500 text-sm mt-1">Checking authentication status</p>
           
           <div className="mt-4 w-full bg-secondary-200 rounded-full h-2">
-            <div className="bg-primary-600 h-2 rounded-full animate-pulse" style={{ width: '70%' }}></div>
+            <div className="bg-primary-600 h-2 rounded-full animate-pulse" style={{ width: '80%' }}></div>
           </div>
           
           <p className="text-xs text-secondary-400 mt-3">
-            This will complete shortly...
+            This should complete within 10 seconds...
           </p>
+          
+          {/* ✅ FALLBACK: Show manual login option after timeout */}
+          <div className="mt-6 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+            <p className="text-xs text-primary-700">
+              <strong>Taking too long?</strong> The app will automatically proceed to the login screen if initialization doesn't complete soon.
+            </p>
+          </div>
         </div>
       </div>
     );

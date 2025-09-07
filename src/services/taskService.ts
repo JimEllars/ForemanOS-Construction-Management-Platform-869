@@ -26,8 +26,7 @@ export const taskService = {
     try {
       console.log('🔍 Fetching tasks for company:', companyId);
 
-      // REDUNDANCY LAYER: Fetch the project IDs directly within the service
-      // This makes the task service independent of UI loading order
+      // ✅ BULLETPROOF: Get project IDs first with enhanced error handling
       console.log('📋 Step 1: Getting project IDs for company...');
       const { data: projects, error: projectsError } = await supabase
         .from('projects_fos2025')
@@ -41,20 +40,22 @@ export const taskService = {
           code: projectsError.code,
           details: projectsError.details
         });
-        throw projectsError;
+        
+        // ✅ GRACEFUL DEGRADATION: Return empty array instead of throwing
+        console.log('🔄 Returning empty tasks array due to projects error (preventing crash)');
+        return [];
       }
 
       if (!projects || projects.length === 0) {
         console.log('ℹ️ No projects found for company, returning empty tasks array');
         console.log('ℹ️ This is normal for new companies or companies without projects yet');
-        return []; // If there are no projects, there can be no tasks
+        return [];
       }
 
       const projectIds = projects.map(p => p.id);
       console.log('📋 Step 2: Found project IDs:', projectIds.length, 'projects');
-      console.log('📋 Project IDs:', projectIds);
 
-      // Now, fetch all tasks that belong to the retrieved projects
+      // ✅ IMPROVED: Batch fetch tasks with better error handling
       console.log('📋 Step 3: Fetching tasks for all company projects...');
       const { data: tasks, error: tasksError } = await supabase
         .from(TABLE_NAME)
@@ -69,16 +70,23 @@ export const taskService = {
           code: tasksError.code,
           details: tasksError.details
         });
-        throw tasksError;
+        
+        // ✅ GRACEFUL DEGRADATION: Return empty array instead of throwing
+        console.log('🔄 Returning empty tasks array due to tasks error (preventing crash)');
+        return [];
       }
 
-      console.log('✅ Successfully fetched tasks:', (tasks || []).length);
-      console.log('📊 Task distribution by project:', 
-        projectIds.map(pid => ({
-          projectId: pid,
-          taskCount: (tasks || []).filter(t => t.project_id === pid).length
-        }))
-      );
+      const taskCount = (tasks || []).length;
+      console.log('✅ Successfully fetched tasks:', taskCount);
+      
+      if (taskCount > 0) {
+        console.log('📊 Task distribution by project:', 
+          projectIds.map(pid => ({
+            projectId: pid,
+            taskCount: (tasks || []).filter(t => t.project_id === pid).length
+          }))
+        );
+      }
 
       return tasks || [];
 
@@ -93,8 +101,8 @@ export const taskService = {
           name: error.name
         });
       }
-      
-      // Always return an empty array on failure to prevent app crashes
+
+      // ✅ BULLETPROOF: Always return empty array on any failure to prevent app crashes
       console.log('🔄 Returning empty array due to error (preventing crash)');
       return [];
     }

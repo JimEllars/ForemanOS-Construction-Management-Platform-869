@@ -53,18 +53,26 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
           errorMessage = 'Too many login attempts. Please wait a few minutes before trying again.';
         }
 
+        set({ isLoading: false, error: errorMessage });
         throw new Error(errorMessage);
       }
 
       if (!data.user) {
+        set({ isLoading: false, error: 'Login failed: No user data returned from authentication.' });
         throw new Error('Login failed: No user data returned from authentication.');
       }
 
-      console.log('✅ Authentication successful, loading profile...');
+      console.log('✅ Authentication successful, processing login data...');
       
-      // ✅ CRITICAL FIX: Don't call handleSuccessfulLogin here
-      // Let the onAuthStateChange listener handle it to prevent race condition
-      console.log('🔄 Waiting for auth state change to handle login completion...');
+      // ✅ CRITICAL FIX: Directly handle the successful login here
+      try {
+        await get().handleSuccessfulLogin({ user: data.user, session: data.session });
+        console.log('✅ Login process completed successfully');
+      } catch (loginError) {
+        console.error('❌ Failed to complete login process:', loginError);
+        set({ isLoading: false, error: loginError.message });
+        throw loginError;
+      }
 
     } catch (error: any) {
       console.error('❌ Login failed:', error);
@@ -75,193 +83,202 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
   handleSuccessfulLogin: async (data: any) => {
     try {
-      console.log('🔍 Starting handleSuccessfulLogin for user:', data.user.email);
+      console.log('🔍 Starting enhanced login process for user:', data.user.email);
       console.log('🔍 User ID:', data.user.id);
 
-      // ✅ CRITICAL FIX: Fetch profile and company data BEFORE setting authenticated state
+      // ✅ ENHANCED ERROR HANDLING: More detailed logging and better error messages
       console.log('📋 Step 1: Fetching user profile...');
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles_fos2025')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
+      
+      let profile;
+      let company;
+      
+      try {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles_fos2025')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
 
-      if (profileError) {
-        console.error('❌ Profile fetch error:', profileError);
-        
-        // If profile doesn't exist, create one
-        if (profileError.code === 'PGRST116') {
-          console.log('📝 Profile not found, creating new profile...');
-          
-          // Create a default company first
-          const { data: newCompany, error: companyError } = await supabase
-            .from('companies_fos2025')
-            .insert({
-              name: `${data.user.email?.split('@')[0] || 'User'}'s Company`,
-              plan: 'free',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .select()
-            .single();
-
-          if (companyError) {
-            console.error('❌ Company creation error:', companyError);
-            throw new Error('Failed to create company profile. Please contact support.');
-          }
-
-          // Create the user profile
-          const { data: newProfile, error: newProfileError } = await supabase
-            .from('profiles_fos2025')
-            .insert({
-              id: data.user.id,
-              email: data.user.email,
-              name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
-              role: 'admin',
-              company_id: newCompany.id,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .select()
-            .single();
-
-          if (newProfileError) {
-            console.error('❌ Profile creation error:', newProfileError);
-            throw new Error('Failed to create user profile. Please contact support.');
-          }
-
-          // ✅ ATOMIC STATE UPDATE: Set everything at once, ONLY after all data is ready
-          set({
-            user: { ...newProfile, companies_fos2025: newCompany },
-            company: newCompany,
-            session: data.session,
-            isAuthenticated: true, // This is the LAST thing we set
-            isLoading: false,
-            error: null
+        if (profileError) {
+          console.error('❌ Profile fetch error details:', {
+            code: profileError.code,
+            message: profileError.message,
+            details: profileError.details,
+            hint: profileError.hint
           });
 
-          console.log('✅ New user profile created and logged in successfully:', newProfile.name);
-          return;
+          // If profile doesn't exist, create one
+          if (profileError.code === 'PGRST116' || profileError.message.includes('No rows found')) {
+            console.log('📝 Profile not found, creating new profile and company...');
+            
+            // Create a default company first
+            console.log('🏢 Step 1a: Creating default company...');
+            const { data: newCompany, error: companyError } = await supabase
+              .from('companies_fos2025')
+              .insert({
+                name: `${data.user.email?.split('@')[0] || 'User'}'s Company`,
+                plan: 'free',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .select()
+              .single();
+
+            if (companyError) {
+              console.error('❌ Company creation error:', companyError);
+              throw new Error(`Failed to create company: ${companyError.message}. Please try again or contact support.`);
+            }
+
+            console.log('✅ Company created successfully:', newCompany.name);
+            company = newCompany;
+
+            // Create the user profile
+            console.log('📝 Step 1b: Creating user profile...');
+            const { data: newProfile, error: newProfileError } = await supabase
+              .from('profiles_fos2025')
+              .insert({
+                id: data.user.id,
+                email: data.user.email,
+                name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
+                role: 'admin',
+                company_id: newCompany.id,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .select()
+              .single();
+
+            if (newProfileError) {
+              console.error('❌ Profile creation error:', newProfileError);
+              throw new Error(`Failed to create user profile: ${newProfileError.message}. Please contact support.`);
+            }
+
+            console.log('✅ Profile created successfully:', newProfile.name);
+            profile = newProfile;
+
+          } else {
+            // Other database errors
+            throw new Error(`Database error while loading profile: ${profileError.message}. Please try again or contact support.`);
+          }
         } else {
-          throw new Error('Could not load user profile. Please contact support.');
-        }
-      }
-
-      if (!profile) {
-        throw new Error('Could not find a user profile for your account. Please contact support.');
-      }
-
-      console.log('✅ Profile loaded successfully:', profile.name);
-      console.log('🏢 Profile company_id:', profile.company_id);
-
-      // ✅ STEP 2: Fetch company data
-      if (!profile.company_id) {
-        console.warn('⚠️ Profile has no company_id, creating default company...');
-        
-        const { data: newCompany, error: companyError } = await supabase
-          .from('companies_fos2025')
-          .insert({
-            name: `${profile.name || profile.email?.split('@')[0] || 'User'}'s Company`,
-            plan: 'free',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-
-        if (companyError) {
-          console.error('❌ Company creation error:', companyError);
-          throw new Error('Failed to create company profile. Please contact support.');
+          console.log('✅ Profile loaded successfully:', profileData.name);
+          profile = profileData;
         }
 
-        // Update the profile with the new company_id
-        await supabase
-          .from('profiles_fos2025')
-          .update({
-            company_id: newCompany.id,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', profile.id);
+        if (!profile) {
+          throw new Error('Could not create or load user profile. Please contact support.');
+        }
+
+        // ✅ STEP 2: Fetch or create company data
+        if (!company) {
+          console.log('🏢 Step 2: Loading company data...');
+          
+          if (!profile.company_id) {
+            console.warn('⚠️ Profile has no company_id, creating default company...');
+            
+            const { data: newCompany, error: companyError } = await supabase
+              .from('companies_fos2025')
+              .insert({
+                name: `${profile.name || profile.email?.split('@')[0] || 'User'}'s Company`,
+                plan: 'free',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .select()
+              .single();
+
+            if (companyError) {
+              console.error('❌ Company creation error:', companyError);
+              throw new Error(`Failed to create company: ${companyError.message}. Please contact support.`);
+            }
+
+            // Update the profile with the new company_id
+            await supabase
+              .from('profiles_fos2025')
+              .update({
+                company_id: newCompany.id,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', profile.id);
+
+            profile.company_id = newCompany.id;
+            company = newCompany;
+            
+          } else {
+            console.log('🔍 Loading existing company for company_id:', profile.company_id);
+            const { data: existingCompany, error: companyError } = await supabase
+              .from('companies_fos2025')
+              .select('*')
+              .eq('id', profile.company_id)
+              .single();
+
+            if (companyError || !existingCompany) {
+              console.error('❌ Company fetch error:', companyError);
+              
+              // If company doesn't exist, create a default one
+              console.log('🏢 Company not found, creating replacement company...');
+              const { data: newCompany, error: newCompanyError } = await supabase
+                .from('companies_fos2025')
+                .insert({
+                  name: `${profile.name || profile.email?.split('@')[0] || 'User'}'s Company`,
+                  plan: 'free',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+              if (newCompanyError) {
+                console.error('❌ New company creation error:', newCompanyError);
+                throw new Error(`Failed to create company: ${newCompanyError.message}. Please contact support.`);
+              }
+
+              // Update the profile with the new company_id
+              await supabase
+                .from('profiles_fos2025')
+                .update({
+                  company_id: newCompany.id,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', profile.id);
+
+              profile.company_id = newCompany.id;
+              company = newCompany;
+              
+            } else {
+              console.log('✅ Company loaded successfully:', existingCompany.name);
+              company = existingCompany;
+            }
+          }
+        }
+
+        // ✅ FINAL VALIDATION: Ensure we have all required data
+        if (!profile || !company) {
+          throw new Error('Failed to load complete user data. Please try logging in again.');
+        }
 
         // ✅ ATOMIC STATE UPDATE: Set everything at once
         set({
-          user: { ...profile, company_id: newCompany.id, companies_fos2025: newCompany },
-          company: newCompany,
+          user: { ...profile, companies_fos2025: company },
+          company: company,
           session: data.session,
-          isAuthenticated: true, // This is the LAST thing we set
+          isAuthenticated: true,
           isLoading: false,
           error: null
         });
 
-        console.log('✅ Default company created and user logged in successfully');
-        return;
-      }
-
-      console.log('🔍 Step 2: Fetching company data for company_id:', profile.company_id);
-      const { data: company, error: companyError } = await supabase
-        .from('companies_fos2025')
-        .select('*')
-        .eq('id', profile.company_id)
-        .single();
-
-      if (companyError || !company) {
-        console.error('❌ Company fetch error:', companyError);
-        
-        // If company doesn't exist, create a default one
-        console.log('🏢 Company not found, creating default company...');
-        const { data: newCompany, error: newCompanyError } = await supabase
-          .from('companies_fos2025')
-          .insert({
-            name: `${profile.name || profile.email?.split('@')[0] || 'User'}'s Company`,
-            plan: 'free',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-
-        if (newCompanyError) {
-          console.error('❌ New company creation error:', newCompanyError);
-          throw new Error('Failed to create company data. Please contact support.');
-        }
-
-        // Update the profile with the new company_id
-        await supabase
-          .from('profiles_fos2025')
-          .update({
-            company_id: newCompany.id,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', profile.id);
-
-        // ✅ ATOMIC STATE UPDATE: Set everything at once
-        set({
-          user: { ...profile, company_id: newCompany.id, companies_fos2025: newCompany },
-          company: newCompany,
-          session: data.session,
-          isAuthenticated: true, // This is the LAST thing we set
-          isLoading: false,
-          error: null
+        console.log('✅ Login completed successfully!');
+        console.log('📊 User data:', {
+          name: profile.name,
+          email: profile.email,
+          company: company.name,
+          role: profile.role
         });
 
-        console.log('✅ Default company created and user logged in successfully');
-        return;
+      } catch (dbError) {
+        console.error('❌ Database operation failed:', dbError);
+        throw new Error(`Database error: ${dbError.message}`);
       }
-
-      console.log('✅ Company loaded successfully:', company.name);
-
-      // ✅ FINAL ATOMIC STATE UPDATE: Set everything at once, ONLY after ALL data is ready
-      set({
-        user: { ...profile, companies_fos2025: company },
-        company: company,
-        session: data.session,
-        isAuthenticated: true, // This is the CRITICAL LAST STATE CHANGE
-        isLoading: false,
-        error: null
-      });
-
-      console.log('✅ User logged in successfully with all data loaded:', profile.name);
-      console.log('📊 Login complete. User can now access dashboard.');
 
     } catch (error: any) {
       console.error('❌ handleSuccessfulLogin failed:', error);
