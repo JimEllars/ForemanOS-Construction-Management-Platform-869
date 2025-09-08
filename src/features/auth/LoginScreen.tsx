@@ -4,17 +4,17 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Ca
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useStore } from '../../store';
+import CreateTestUserButton from './CreateTestUserButton';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../components/common/SafeIcon';
 
-const { FiEye, FiEyeOff, FiInfo, FiAlertCircle, FiWifi } = FiIcons;
+const { FiEye, FiEyeOff, FiInfo, FiAlertCircle, FiWifi, FiCheckCircle } = FiIcons;
 
 const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-
   const { login, isLoading, error, clearError, isAuthenticated } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,30 +37,33 @@ const LoginScreen: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!email.trim() || !password.trim()) {
       return;
     }
 
     try {
       console.log('🔑 Starting login process...');
-      
       // Clear any previous errors
       clearError();
-      
       await login(email.trim(), password);
-      
       console.log('🎉 Login completed successfully - user should be redirected');
-      
     } catch (err) {
       // Error is handled in the store
       console.error('❌ Login failed:', err);
     }
   };
 
+  const fillTestCredentials = () => {
+    setEmail('demo@foremanos.com');
+    setPassword('TestDemo2024!');
+  };
+
   const getErrorIcon = () => {
-    if (error?.includes('Invalid email or password')) {
+    if (error?.includes('Invalid email or password') || error?.includes('Invalid login credentials')) {
       return FiAlertCircle;
+    }
+    if (error?.includes('Email not confirmed')) {
+      return FiInfo;
     }
     if (error?.includes('Database error') || error?.includes('contact support')) {
       return FiAlertCircle;
@@ -69,39 +72,61 @@ const LoginScreen: React.FC = () => {
   };
 
   const getErrorColor = () => {
-    if (error?.includes('Invalid email or password')) {
+    if (error?.includes('Invalid email or password') || error?.includes('Invalid login credentials')) {
       return 'danger';
+    }
+    if (error?.includes('Email not confirmed')) {
+      return 'warning';
     }
     if (error?.includes('Database error') || error?.includes('contact support')) {
       return 'danger';
     }
-    return 'warning';
+    return 'info';
   };
 
   const getErrorSuggestions = () => {
-    if (error?.includes('Invalid email or password')) {
+    if (error?.includes('Invalid email or password') || error?.includes('Invalid login credentials')) {
       return [
         'Double-check your email and password',
-        'Use "Forgot password?" if needed',
-        'Make sure your account is confirmed'
+        'Use "Forgot password?" if you need to reset',
+        'Try the "Fix Authentication" button below to create a working test account',
+        'Make sure your account exists and is confirmed'
       ];
     }
+    
+    if (error?.includes('Email not confirmed')) {
+      return [
+        'Use the "Fix Authentication" tool below to resolve confirmation issues',
+        'Or manually confirm the user in your Supabase Dashboard',
+        'Or disable email confirmation in Supabase Settings for development',
+        'The fix tool can automatically create a confirmed test account'
+      ];
+    }
+
     if (error?.includes('Database error') || error?.includes('contact support')) {
       return [
         'Check your internet connection',
-        'Try refreshing the page',
-        'Wait a moment and try again',
-        'Contact support if the issue persists'
+        'Verify Supabase project is accessible',
+        'Try the "Fix Authentication" tool to diagnose database issues',
+        'Check browser console for detailed error information'
       ];
     }
+
     if (error?.includes('Too many requests')) {
       return [
         'Wait 5-10 minutes before trying again',
         'Clear your browser cache',
-        'Try using a different browser'
+        'Try using a different browser or incognito mode',
+        'Use the authentication fix tool to create a new test account'
       ];
     }
-    return [];
+
+    return [
+      'Try the "Fix Authentication" tool below for automatic diagnosis',
+      'Check your internet connection',
+      'Verify your Supabase project is properly configured',
+      'Look at browser console for detailed error logs'
+    ];
   };
 
   return (
@@ -109,7 +134,7 @@ const LoginScreen: React.FC = () => {
       {registrationMessage && (
         <div className="bg-success-50 border border-success-200 text-success-700 px-4 py-3 rounded-md">
           <div className="flex items-center">
-            <SafeIcon icon={FiInfo} className="w-5 h-5 mr-2" />
+            <SafeIcon icon={FiCheckCircle} className="w-5 h-5 mr-2" />
             {registrationMessage}
           </div>
         </div>
@@ -122,7 +147,6 @@ const LoginScreen: React.FC = () => {
             Welcome back! Please sign in to your account.
           </p>
         </CardHeader>
-
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
@@ -175,7 +199,6 @@ const LoginScreen: React.FC = () => {
                   Remember me
                 </label>
               </div>
-
               <Link
                 to="/auth/forgot-password"
                 className="text-sm text-primary-600 hover:text-primary-500"
@@ -187,16 +210,12 @@ const LoginScreen: React.FC = () => {
             {error && (
               <div className={`bg-${getErrorColor()}-50 border border-${getErrorColor()}-200 text-${getErrorColor()}-700 px-4 py-3 rounded-md`}>
                 <div className="flex items-start">
-                  <SafeIcon
-                    icon={getErrorIcon()}
-                    className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0"
-                  />
+                  <SafeIcon icon={getErrorIcon()} className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="font-medium">{error}</p>
-                    
                     {getErrorSuggestions().length > 0 && (
                       <div className="mt-2 text-sm">
-                        <p>Troubleshooting tips:</p>
+                        <p>Suggested solutions:</p>
                         <ul className="list-disc list-inside mt-1 space-y-1">
                           {getErrorSuggestions().map((suggestion, index) => (
                             <li key={index}>{suggestion}</li>
@@ -205,11 +224,11 @@ const LoginScreen: React.FC = () => {
                       </div>
                     )}
 
-                    {(error?.includes('Database error') || error?.includes('contact support')) && (
+                    {error?.includes('Email not confirmed') && (
                       <div className="mt-3 p-2 bg-white bg-opacity-50 rounded border">
-                        <p className="text-xs font-medium">Need immediate help?</p>
+                        <p className="text-xs font-medium">Quick Fix Available:</p>
                         <p className="text-xs">
-                          Try creating a new account or contact support with this error message.
+                          Use the "Fix Authentication & Create Test Account" button below to automatically resolve this issue.
                         </p>
                       </div>
                     )}
@@ -233,6 +252,23 @@ const LoginScreen: React.FC = () => {
               )}
             </Button>
 
+            {/* Test Credentials Helper */}
+            <div className="border-t border-secondary-200 pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={fillTestCredentials}
+                >
+                  Use Test Credentials
+                </Button>
+                <span className="text-xs text-secondary-500">
+                  Quick login for testing
+                </span>
+              </div>
+            </div>
+
             {/* Connection status indicator */}
             <div className="flex items-center justify-center space-x-2 text-xs text-secondary-500">
               <SafeIcon icon={FiWifi} className="w-3 h-3" />
@@ -250,6 +286,9 @@ const LoginScreen: React.FC = () => {
           </form>
         </CardContent>
       </Card>
+
+      {/* Enhanced Test User Creation with Comprehensive Fix */}
+      <CreateTestUserButton />
     </div>
   );
 };

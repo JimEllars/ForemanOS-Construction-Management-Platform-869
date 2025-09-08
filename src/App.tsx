@@ -26,16 +26,18 @@ const TimeTrackingScreen = () => <div className="p-6">Time Tracking Screen - Com
 const DocumentsScreen = () => <div className="p-6">Documents Screen - Coming Soon</div>;
 
 function App() {
-  // ✅ SIMPLIFIED: Only track initial session check
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  // ✅ AUTHENTICATION ENABLED: Set to false to use real authentication
+  const BYPASS_AUTH = false; // Real authentication enabled
   
+  // ✅ SIMPLIFIED: Only track initial session check
+  const [isCheckingSession, setIsCheckingSession] = useState(!BYPASS_AUTH);
   const { 
     isAuthenticated, 
     setUser, 
     setCompany, 
     setSession, 
     setOnlineStatus, 
-    clearError, 
+    clearError,
     handleSuccessfulLogin 
   } = useStore();
 
@@ -43,8 +45,40 @@ function App() {
   useSupabaseData();
 
   useEffect(() => {
+    if (BYPASS_AUTH) {
+      // ✅ BYPASS: Set mock authentication data for testing
+      console.log('🔓 BYPASS MODE: Setting mock authentication data...');
+      
+      // Create mock user and company data
+      const mockUser = {
+        id: 'mock-user-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'admin' as const,
+        company_id: 'mock-company-id',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const mockCompany = {
+        id: 'mock-company-id',
+        name: 'Test Company',
+        plan: 'pro' as const,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      // Set mock data in store
+      setUser(mockUser);
+      setCompany(mockCompany);
+      setSession({ user: mockUser });
+      
+      console.log('✅ BYPASS MODE: Mock authentication complete');
+      return;
+    }
+
     let mounted = true;
-    let isHandlingAuth = false; // ✅ CRITICAL FIX: Prevent duplicate auth handling
+    let isHandlingAuth = false;
 
     // Clear any errors on app start
     clearError();
@@ -63,7 +97,7 @@ function App() {
         console.log('🔍 Checking for existing session...');
         
         const { data: { session }, error } = await supabase.auth.getSession();
-
+        
         if (!mounted) return;
 
         if (error) {
@@ -76,8 +110,12 @@ function App() {
         if (session?.user && !isHandlingAuth) {
           console.log('✅ Found existing session for:', session.user.email);
           isHandlingAuth = true;
+          
           try {
-            await handleSuccessfulLogin({ user: session.user, session });
+            await handleSuccessfulLogin({
+              user: session.user,
+              session
+            });
           } catch (error) {
             console.error('❌ Failed to handle existing session:', error);
           } finally {
@@ -103,9 +141,9 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
-
+        
         console.log('🔄 Auth state changed:', event, session?.user?.email);
-
+        
         // ✅ CRITICAL FIX: Only handle SIGNED_OUT events here
         // Login is handled directly in the login function to prevent race conditions
         if (event === 'SIGNED_OUT') {
@@ -164,7 +202,7 @@ function App() {
   }, []);
 
   // ✅ IMPROVED: Better loading screen with timeout indication
-  if (isCheckingSession) {
+  if (isCheckingSession && !BYPASS_AUTH) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-secondary-50">
         <div className="text-center max-w-md mx-auto p-6">
@@ -173,7 +211,10 @@ function App() {
           <p className="text-secondary-500 text-sm mt-1">Checking authentication status</p>
           
           <div className="mt-4 w-full bg-secondary-200 rounded-full h-2">
-            <div className="bg-primary-600 h-2 rounded-full animate-pulse" style={{ width: '80%' }}></div>
+            <div 
+              className="bg-primary-600 h-2 rounded-full animate-pulse" 
+              style={{ width: '80%' }}
+            ></div>
           </div>
           
           <p className="text-xs text-secondary-400 mt-3">
@@ -191,6 +232,9 @@ function App() {
     );
   }
 
+  // ✅ BYPASS MODE: Always show app if bypass is enabled
+  const shouldShowApp = BYPASS_AUTH || isAuthenticated;
+
   // ✅ CLEAN ROUTING: App renders immediately after session check
   return (
     <ErrorBoundary>
@@ -206,7 +250,7 @@ function App() {
           {/* App Routes */}
           <Route 
             path="/app" 
-            element={isAuthenticated ? <AppLayout /> : <Navigate to="/auth/login" replace />}
+            element={shouldShowApp ? <AppLayout /> : <Navigate to="/auth/login" replace />}
           >
             <Route index element={<DashboardScreen />} />
             <Route path="projects" element={<ProjectsScreen />} />
@@ -220,7 +264,7 @@ function App() {
           {/* Default Redirects */}
           <Route 
             path="/" 
-            element={<Navigate to={isAuthenticated ? "/app" : "/auth/login"} replace />} 
+            element={<Navigate to={shouldShowApp ? "/app" : "/auth/login"} replace />} 
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

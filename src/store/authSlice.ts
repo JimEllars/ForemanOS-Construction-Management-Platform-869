@@ -45,12 +45,19 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         console.error('❌ Supabase auth error:', error);
         let errorMessage = error.message;
 
+        // Provide more specific and helpful error messages
         if (error.message.includes('Invalid login credentials')) {
           errorMessage = 'Invalid email or password. Please check your credentials and try again.';
         } else if (error.message.includes('Email not confirmed')) {
           errorMessage = 'Please check your email and click the confirmation link before signing in.';
         } else if (error.message.includes('Too many requests')) {
           errorMessage = 'Too many login attempts. Please wait a few minutes before trying again.';
+        } else if (error.message.includes('User not found')) {
+          errorMessage = 'No account found with this email address. Please check the email or create a new account.';
+        } else if (error.message.includes('signup is disabled')) {
+          errorMessage = 'Account creation is currently disabled. Please contact support.';
+        } else if (error.message.includes('Database error')) {
+          errorMessage = 'Database connection error. Please check your internet connection and try again.';
         }
 
         set({ isLoading: false, error: errorMessage });
@@ -58,17 +65,21 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       }
 
       if (!data.user) {
-        set({ isLoading: false, error: 'Login failed: No user data returned from authentication.' });
-        throw new Error('Login failed: No user data returned from authentication.');
+        const errorMsg = 'Login failed: No user data returned from authentication.';
+        set({ isLoading: false, error: errorMsg });
+        throw new Error(errorMsg);
       }
 
       console.log('✅ Authentication successful, processing login data...');
-      
+
       // ✅ CRITICAL FIX: Directly handle the successful login here
       try {
-        await get().handleSuccessfulLogin({ user: data.user, session: data.session });
+        await get().handleSuccessfulLogin({
+          user: data.user,
+          session: data.session
+        });
         console.log('✅ Login process completed successfully');
-      } catch (loginError) {
+      } catch (loginError: any) {
         console.error('❌ Failed to complete login process:', loginError);
         set({ isLoading: false, error: loginError.message });
         throw loginError;
@@ -88,10 +99,9 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
       // ✅ ENHANCED ERROR HANDLING: More detailed logging and better error messages
       console.log('📋 Step 1: Fetching user profile...');
-      
       let profile;
       let company;
-      
+
       try {
         const { data: profileData, error: profileError } = await supabase
           .from('profiles_fos2025')
@@ -175,7 +185,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
           
           if (!profile.company_id) {
             console.warn('⚠️ Profile has no company_id, creating default company...');
-            
             const { data: newCompany, error: companyError } = await supabase
               .from('companies_fos2025')
               .insert({
@@ -203,7 +212,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
             profile.company_id = newCompany.id;
             company = newCompany;
-            
           } else {
             console.log('🔍 Loading existing company for company_id:', profile.company_id);
             const { data: existingCompany, error: companyError } = await supabase
@@ -214,7 +222,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
             if (companyError || !existingCompany) {
               console.error('❌ Company fetch error:', companyError);
-              
               // If company doesn't exist, create a default one
               console.log('🏢 Company not found, creating replacement company...');
               const { data: newCompany, error: newCompanyError } = await supabase
@@ -244,7 +251,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
 
               profile.company_id = newCompany.id;
               company = newCompany;
-              
             } else {
               console.log('✅ Company loaded successfully:', existingCompany.name);
               company = existingCompany;
@@ -275,14 +281,13 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
           role: profile.role
         });
 
-      } catch (dbError) {
+      } catch (dbError: any) {
         console.error('❌ Database operation failed:', dbError);
         throw new Error(`Database error: ${dbError.message}`);
       }
 
     } catch (error: any) {
       console.error('❌ handleSuccessfulLogin failed:', error);
-      
       // ✅ CLEAN UP ON FAILURE: Reset to a clean state
       set({
         user: null,
@@ -292,7 +297,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         isLoading: false,
         error: error.message
       });
-      
       throw error;
     }
   },
@@ -305,7 +309,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
       if (password.length < 8) {
         throw new Error('Password must be at least 8 characters long');
       }
-
       if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
         throw new Error('Password must contain at least one uppercase letter, one lowercase letter, and one number');
       }
@@ -426,7 +429,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
     try {
       console.log('👋 Logging out...');
       await supabase.auth.signOut();
-      
       set({
         user: null,
         company: null,
@@ -435,7 +437,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
         error: null,
         isLoading: false,
       });
-      
       console.log('✅ Logged out successfully');
     } catch (error: any) {
       console.error('❌ Logout error:', error);

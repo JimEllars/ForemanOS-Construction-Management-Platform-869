@@ -5,9 +5,25 @@ import { taskService } from '../services/taskService';
 import { clientService } from '../services/clientService';
 
 export const useSupabaseData = () => {
-  const { company, isAuthenticated, setProjects, setTasks, setClients, setLoading } = useStore();
+  const { 
+    company, 
+    isAuthenticated, 
+    setProjects, 
+    setTasks, 
+    setClients, 
+    setLoading 
+  } = useStore();
 
   useEffect(() => {
+    // ✅ BYPASS: Skip real data loading when in bypass mode
+    const BYPASS_AUTH = false; // Changed from true to false
+    
+    if (BYPASS_AUTH) {
+      console.log('🔓 BYPASS MODE: Skipping real data loading, using mock data');
+      setLoading(false);
+      return;
+    }
+
     // ✅ SIMPLIFIED: Only load supplementary data AFTER user is fully authenticated with company
     if (isAuthenticated && company?.id) {
       console.log('🔄 User fully authenticated with company, loading dashboard data...');
@@ -66,8 +82,8 @@ export const useSupabaseData = () => {
       setProjects([]);
       setTasks([]);
       setClients([]);
-      console.log('🔄 App will continue to work with empty data arrays');
       
+      console.log('🔄 App will continue to work with empty data arrays');
     } finally {
       setLoading(false);
       console.log('✅ Dashboard data loading completed');
