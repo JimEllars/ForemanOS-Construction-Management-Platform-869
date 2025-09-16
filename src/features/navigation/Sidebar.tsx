@@ -5,16 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../components/common/SafeIcon';
 import { clsx } from 'clsx';
 
-const { 
-  FiHome, 
-  FiFolderPlus, 
-  FiCheckSquare, 
-  FiUsers, 
-  FiFileText, 
-  FiClock, 
-  FiUpload,
-  FiX 
-} = FiIcons;
+const { FiHome, FiFolderPlus, FiCheckSquare, FiUsers, FiFileText, FiClock, FiUpload, FiX, FiSettings } = FiIcons;
 
 interface SidebarProps {
   isOpen: boolean;
@@ -29,6 +20,7 @@ const navigationItems = [
   { name: 'Daily Logs', href: '/app/daily-logs', icon: FiFileText },
   { name: 'Time Tracking', href: '/app/time-tracking', icon: FiClock },
   { name: 'Documents', href: '/app/documents', icon: FiUpload },
+  { name: 'Settings', href: '/app/settings', icon: FiSettings },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
@@ -53,17 +45,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         animate={{ x: isOpen ? 0 : -280 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={clsx(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-secondary-200 transform md:relative md:translate-x-0 md:block',
+          'fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-secondary-900 border-r border-secondary-200 dark:border-secondary-700 transform md:relative md:translate-x-0 md:block',
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-secondary-200">
-            <h2 className="text-lg font-semibold text-secondary-900">ForemanOS</h2>
+          <div className="flex items-center justify-between p-4 border-b border-secondary-200 dark:border-secondary-700">
+            <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">ForemanOS</h2>
             <button
               onClick={onClose}
-              className="md:hidden p-1 rounded-md text-secondary-600 hover:text-secondary-900"
+              className="md:hidden p-1 rounded-md text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-secondary-100"
             >
               <SafeIcon icon={FiX} className="w-5 h-5" />
             </button>
@@ -80,8 +72,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   clsx(
                     'flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
                     isActive
-                      ? 'bg-primary-100 text-primary-700'
-                      : 'text-secondary-600 hover:text-secondary-900 hover:bg-secondary-100'
+                      ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+                      : 'text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-secondary-100 hover:bg-secondary-100 dark:hover:bg-secondary-800'
                   )
                 }
               >
@@ -90,6 +82,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </NavLink>
             ))}
           </nav>
+
+          {/* Footer */}
+          <div className="p-4 border-t border-secondary-200 dark:border-secondary-700">
+            <div className="text-xs text-secondary-500 dark:text-secondary-400 text-center">
+              <p>ForemanOS v1.0</p>
+              <p>Field Operations Management</p>
+            </div>
+          </div>
         </div>
       </motion.div>
     </>

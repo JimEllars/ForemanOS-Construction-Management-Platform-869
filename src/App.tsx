@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useStore } from './store';
 import { supabase } from './lib/supabaseClient';
 import { useSupabaseData } from './hooks/useSupabaseData';
+import { ThemeProvider } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 
 // Layouts
@@ -17,28 +18,27 @@ import ForgotPasswordScreen from './features/auth/ForgotPasswordScreen';
 // App Screens
 import DashboardScreen from './features/dashboard/DashboardScreen';
 import ProjectsScreen from './features/projects/ProjectsScreen';
+import TasksScreen from './features/tasks/TasksScreen';
 import ClientsScreen from './features/clients/ClientsScreen';
-
-// Placeholder screens
-const TasksScreen = () => <div className="p-6">Tasks Screen - Coming Soon</div>;
-const DailyLogsScreen = () => <div className="p-6">Daily Logs Screen - Coming Soon</div>;
-const TimeTrackingScreen = () => <div className="p-6">Time Tracking Screen - Coming Soon</div>;
-const DocumentsScreen = () => <div className="p-6">Documents Screen - Coming Soon</div>;
+import DailyLogsScreen from './features/daily-logs/DailyLogsScreen';
+import TimeTrackingScreen from './features/time-tracking/TimeTrackingScreen';
+import DocumentsScreen from './features/documents/DocumentsScreen';
+import SettingsScreen from './features/settings/SettingsScreen';
 
 function App() {
   // ✅ AUTHENTICATION ENABLED: Set to false to use real authentication
   const BYPASS_AUTH = false; // Real authentication enabled
-  
+
   // ✅ SIMPLIFIED: Only track initial session check
   const [isCheckingSession, setIsCheckingSession] = useState(!BYPASS_AUTH);
-  const { 
-    isAuthenticated, 
-    setUser, 
-    setCompany, 
-    setSession, 
-    setOnlineStatus, 
+  const {
+    isAuthenticated,
+    setUser,
+    setCompany,
+    setSession,
+    setOnlineStatus,
     clearError,
-    handleSuccessfulLogin 
+    handleSuccessfulLogin
   } = useStore();
 
   // Load supplementary data when authenticated
@@ -49,7 +49,6 @@ function App() {
       // ✅ BYPASS: Set mock authentication data for testing
       console.log('🔓 BYPASS MODE: Setting mock authentication data...');
       
-      // Create mock user and company data
       const mockUser = {
         id: 'mock-user-id',
         email: 'test@example.com',
@@ -68,11 +67,9 @@ function App() {
         updated_at: new Date().toISOString()
       };
 
-      // Set mock data in store
       setUser(mockUser);
       setCompany(mockCompany);
       setSession({ user: mockUser });
-      
       console.log('✅ BYPASS MODE: Mock authentication complete');
       return;
     }
@@ -95,14 +92,12 @@ function App() {
     const checkSession = async () => {
       try {
         console.log('🔍 Checking for existing session...');
-        
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (!mounted) return;
 
         if (error) {
           console.error('❌ Session check error:', error);
-          // Non-fatal - user can still log in
           setIsCheckingSession(false);
           return;
         }
@@ -110,7 +105,6 @@ function App() {
         if (session?.user && !isHandlingAuth) {
           console.log('✅ Found existing session for:', session.user.email);
           isHandlingAuth = true;
-          
           try {
             await handleSuccessfulLogin({
               user: session.user,
@@ -141,15 +135,13 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
-        
+
         console.log('🔄 Auth state changed:', event, session?.user?.email);
-        
-        // ✅ CRITICAL FIX: Only handle SIGNED_OUT events here
-        // Login is handled directly in the login function to prevent race conditions
+
         if (event === 'SIGNED_OUT') {
           console.log('👋 User signed out');
           if (mounted) {
-            isHandlingAuth = false; // Reset the flag
+            isHandlingAuth = false;
             setUser(null);
             setCompany(null);
             setSession(null);
@@ -204,26 +196,25 @@ function App() {
   // ✅ IMPROVED: Better loading screen with timeout indication
   if (isCheckingSession && !BYPASS_AUTH) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-secondary-50">
+      <div className="min-h-screen flex items-center justify-center bg-secondary-50 dark:bg-secondary-900">
         <div className="text-center max-w-md mx-auto p-6">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-secondary-600 font-medium">Initializing ForemanOS...</p>
-          <p className="text-secondary-500 text-sm mt-1">Checking authentication status</p>
+          <p className="text-secondary-600 dark:text-secondary-400 font-medium">Initializing ForemanOS...</p>
+          <p className="text-secondary-500 dark:text-secondary-500 text-sm mt-1">Checking authentication status</p>
           
-          <div className="mt-4 w-full bg-secondary-200 rounded-full h-2">
+          <div className="mt-4 w-full bg-secondary-200 dark:bg-secondary-700 rounded-full h-2">
             <div 
               className="bg-primary-600 h-2 rounded-full animate-pulse" 
               style={{ width: '80%' }}
             ></div>
           </div>
           
-          <p className="text-xs text-secondary-400 mt-3">
+          <p className="text-xs text-secondary-400 dark:text-secondary-500 mt-3">
             This should complete within 10 seconds...
           </p>
-          
-          {/* ✅ FALLBACK: Show manual login option after timeout */}
-          <div className="mt-6 p-3 bg-primary-50 border border-primary-200 rounded-lg">
-            <p className="text-xs text-primary-700">
+
+          <div className="mt-6 p-3 bg-primary-50 dark:bg-primary-900 border border-primary-200 dark:border-primary-800 rounded-lg">
+            <p className="text-xs text-primary-700 dark:text-primary-300">
               <strong>Taking too long?</strong> The app will automatically proceed to the login screen if initialization doesn't complete soon.
             </p>
           </div>
@@ -232,44 +223,39 @@ function App() {
     );
   }
 
-  // ✅ BYPASS MODE: Always show app if bypass is enabled
   const shouldShowApp = BYPASS_AUTH || isAuthenticated;
 
-  // ✅ CLEAN ROUTING: App renders immediately after session check
   return (
-    <ErrorBoundary>
-      <Router>
-        <Routes>
-          {/* Auth Routes */}
-          <Route path="/auth" element={<AuthLayout />}>
-            <Route path="login" element={<LoginScreen />} />
-            <Route path="register" element={<RegisterScreen />} />
-            <Route path="forgot-password" element={<ForgotPasswordScreen />} />
-          </Route>
+    <ThemeProvider>
+      <ErrorBoundary>
+        <Router>
+          <Routes>
+            {/* Auth Routes */}
+            <Route path="/auth" element={<AuthLayout />}>
+              <Route path="login" element={<LoginScreen />} />
+              <Route path="register" element={<RegisterScreen />} />
+              <Route path="forgot-password" element={<ForgotPasswordScreen />} />
+            </Route>
 
-          {/* App Routes */}
-          <Route 
-            path="/app" 
-            element={shouldShowApp ? <AppLayout /> : <Navigate to="/auth/login" replace />}
-          >
-            <Route index element={<DashboardScreen />} />
-            <Route path="projects" element={<ProjectsScreen />} />
-            <Route path="tasks" element={<TasksScreen />} />
-            <Route path="clients" element={<ClientsScreen />} />
-            <Route path="daily-logs" element={<DailyLogsScreen />} />
-            <Route path="time-tracking" element={<TimeTrackingScreen />} />
-            <Route path="documents" element={<DocumentsScreen />} />
-          </Route>
+            {/* App Routes */}
+            <Route path="/app" element={shouldShowApp ? <AppLayout /> : <Navigate to="/auth/login" replace />}>
+              <Route index element={<DashboardScreen />} />
+              <Route path="projects" element={<ProjectsScreen />} />
+              <Route path="tasks" element={<TasksScreen />} />
+              <Route path="clients" element={<ClientsScreen />} />
+              <Route path="daily-logs" element={<DailyLogsScreen />} />
+              <Route path="time-tracking" element={<TimeTrackingScreen />} />
+              <Route path="documents" element={<DocumentsScreen />} />
+              <Route path="settings" element={<SettingsScreen />} />
+            </Route>
 
-          {/* Default Redirects */}
-          <Route 
-            path="/" 
-            element={<Navigate to={shouldShowApp ? "/app" : "/auth/login"} replace />} 
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
-    </ErrorBoundary>
+            {/* Default Redirects */}
+            <Route path="/" element={<Navigate to={shouldShowApp ? "/app" : "/auth/login"} replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 }
 
