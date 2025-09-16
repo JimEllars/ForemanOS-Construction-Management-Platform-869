@@ -59,6 +59,7 @@ export interface Client {
 export interface DailyLog {
   id: string;
   project_id: string;
+  project_name?: string;
   date: string;
   weather?: string;
   work_completed: string;
@@ -66,6 +67,41 @@ export interface DailyLog {
   crew_present?: string;
   notes?: string;
   created_by: string;
+  created_by_name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Document {
+  id: string;
+  project_id: string;
+  project_name?: string;
+  name: string;
+  storage_path: string;
+  file_type: string;
+  file_extension?: string;
+  category: string;
+  size_bytes: number;
+  size_display?: string;
+  uploaded_by: string;
+  uploaded_by_name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TimeEntry {
+  id: string;
+  project_id: string;
+  project_name?: string;
+  task_id?: string;
+  task_name?: string;
+  user_id: string;
+  user_name?: string;
+  start_time: string;
+  end_time?: string;
+  duration_hours?: number;
+  description?: string;
+  is_running: boolean;
   created_at: string;
   updated_at: string;
 }

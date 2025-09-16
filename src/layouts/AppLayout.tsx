@@ -7,13 +7,11 @@ const AppLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-secondary-100">
+    <div className="flex h-screen bg-secondary-50 dark:bg-secondary-900 transition-colors">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopHeader onMenuClick={() => setSidebarOpen(true)} />
-        
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-secondary-50 dark:bg-secondary-900 transition-colors">
           <div className="p-4 md:p-6">
             <Outlet />
           </div>

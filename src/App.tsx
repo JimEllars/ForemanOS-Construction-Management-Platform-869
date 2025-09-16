@@ -31,14 +31,14 @@ function App() {
 
   // ✅ SIMPLIFIED: Only track initial session check
   const [isCheckingSession, setIsCheckingSession] = useState(!BYPASS_AUTH);
-  const {
-    isAuthenticated,
-    setUser,
-    setCompany,
-    setSession,
-    setOnlineStatus,
-    clearError,
-    handleSuccessfulLogin
+  const { 
+    isAuthenticated, 
+    setUser, 
+    setCompany, 
+    setSession, 
+    setOnlineStatus, 
+    clearError, 
+    handleSuccessfulLogin 
   } = useStore();
 
   // Load supplementary data when authenticated
@@ -48,7 +48,6 @@ function App() {
     if (BYPASS_AUTH) {
       // ✅ BYPASS: Set mock authentication data for testing
       console.log('🔓 BYPASS MODE: Setting mock authentication data...');
-      
       const mockUser = {
         id: 'mock-user-id',
         email: 'test@example.com',
@@ -212,10 +211,11 @@ function App() {
           <p className="text-xs text-secondary-400 dark:text-secondary-500 mt-3">
             This should complete within 10 seconds...
           </p>
-
+          
           <div className="mt-6 p-3 bg-primary-50 dark:bg-primary-900 border border-primary-200 dark:border-primary-800 rounded-lg">
             <p className="text-xs text-primary-700 dark:text-primary-300">
-              <strong>Taking too long?</strong> The app will automatically proceed to the login screen if initialization doesn't complete soon.
+              <strong>Taking too long?</strong> The app will automatically proceed to the login screen 
+              if initialization doesn't complete soon.
             </p>
           </div>
         </div>
@@ -227,34 +227,42 @@ function App() {
 
   return (
     <ThemeProvider>
-      <ErrorBoundary>
-        <Router>
-          <Routes>
-            {/* Auth Routes */}
-            <Route path="/auth" element={<AuthLayout />}>
-              <Route path="login" element={<LoginScreen />} />
-              <Route path="register" element={<RegisterScreen />} />
-              <Route path="forgot-password" element={<ForgotPasswordScreen />} />
-            </Route>
+      <div className="min-h-screen bg-secondary-50 dark:bg-secondary-900 transition-colors">
+        <ErrorBoundary>
+          <Router>
+            <Routes>
+              {/* Auth Routes */}
+              <Route path="/auth" element={<AuthLayout />}>
+                <Route path="login" element={<LoginScreen />} />
+                <Route path="register" element={<RegisterScreen />} />
+                <Route path="forgot-password" element={<ForgotPasswordScreen />} />
+              </Route>
 
-            {/* App Routes */}
-            <Route path="/app" element={shouldShowApp ? <AppLayout /> : <Navigate to="/auth/login" replace />}>
-              <Route index element={<DashboardScreen />} />
-              <Route path="projects" element={<ProjectsScreen />} />
-              <Route path="tasks" element={<TasksScreen />} />
-              <Route path="clients" element={<ClientsScreen />} />
-              <Route path="daily-logs" element={<DailyLogsScreen />} />
-              <Route path="time-tracking" element={<TimeTrackingScreen />} />
-              <Route path="documents" element={<DocumentsScreen />} />
-              <Route path="settings" element={<SettingsScreen />} />
-            </Route>
+              {/* App Routes */}
+              <Route 
+                path="/app" 
+                element={shouldShowApp ? <AppLayout /> : <Navigate to="/auth/login" replace />}
+              >
+                <Route index element={<DashboardScreen />} />
+                <Route path="projects" element={<ProjectsScreen />} />
+                <Route path="tasks" element={<TasksScreen />} />
+                <Route path="clients" element={<ClientsScreen />} />
+                <Route path="daily-logs" element={<DailyLogsScreen />} />
+                <Route path="time-tracking" element={<TimeTrackingScreen />} />
+                <Route path="documents" element={<DocumentsScreen />} />
+                <Route path="settings" element={<SettingsScreen />} />
+              </Route>
 
-            {/* Default Redirects */}
-            <Route path="/" element={<Navigate to={shouldShowApp ? "/app" : "/auth/login"} replace />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Router>
-      </ErrorBoundary>
+              {/* Default Redirects */}
+              <Route 
+                path="/" 
+                element={<Navigate to={shouldShowApp ? "/app" : "/auth/login"} replace />} 
+              />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Router>
+        </ErrorBoundary>
+      </div>
     </ThemeProvider>
   );
 }

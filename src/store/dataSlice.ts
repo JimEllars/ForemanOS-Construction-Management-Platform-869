@@ -1,5 +1,5 @@
-import {StateCreator} from 'zustand';
-import {Project,Task,Client,DailyLog} from '../types';
+import { StateCreator } from 'zustand';
+import { Project, Task, Client, DailyLog } from '../types';
 
 export interface DataSlice {
   projects: Project[];
@@ -9,28 +9,30 @@ export interface DataSlice {
   isLoading: boolean;
 
   // Projects
-  setProjects: (projects: Project[])=> void;
-  addProject: (project: Project)=> void;
-  updateProject: (id: string,updates: Partial<Project>)=> void;
-  removeProject: (id: string)=> void;
+  setProjects: (projects: Project[]) => void;
+  addProject: (project: Project) => void;
+  updateProject: (id: string, updates: Partial<Project>) => void;
+  removeProject: (id: string) => void;
 
   // Tasks
-  setTasks: (tasks: Task[])=> void;
-  addTask: (task: Task)=> void;
-  updateTask: (id: string,updates: Partial<Task>)=> void;
-  removeTask: (id: string)=> void;
+  setTasks: (tasks: Task[]) => void;
+  addTask: (task: Task) => void;
+  updateTask: (id: string, updates: Partial<Task>) => void;
+  removeTask: (id: string) => void;
 
   // Clients
-  setClients: (clients: Client[])=> void;
-  addClient: (client: Client)=> void;
-  updateClient: (id: string,updates: Partial<Client>)=> void;
-  removeClient: (id: string)=> void;
+  setClients: (clients: Client[]) => void;
+  addClient: (client: Client) => void;
+  updateClient: (id: string, updates: Partial<Client>) => void;
+  removeClient: (id: string) => void;
 
   // Daily Logs
-  setDailyLogs: (logs: DailyLog[])=> void;
-  addDailyLog: (log: DailyLog)=> void;
+  setDailyLogs: (logs: DailyLog[]) => void;
+  addDailyLog: (log: DailyLog) => void;
+  updateDailyLog: (id: string, updates: Partial<DailyLog>) => void;
+  removeDailyLog: (id: string) => void;
 
-  setLoading: (loading: boolean)=> void;
+  setLoading: (loading: boolean) => void;
 }
 
 // ✅ MOCK DATA: Sample data for testing without authentication
@@ -151,55 +153,129 @@ const mockClients: Client[] = [
   }
 ];
 
-export const createDataSlice: StateCreator<DataSlice>=(set)=> ({
+const mockDailyLogs: DailyLog[] = [
+  {
+    id: 'log-1',
+    project_id: 'proj-1',
+    project_name: 'Downtown Office Building',
+    date: '2024-01-22',
+    weather: 'sunny',
+    work_completed: 'Completed foundation excavation on the north side. Poured concrete for footings sections A-C. Installed rebar for sections D-F.',
+    materials_used: '15 cubic yards concrete, 2 tons rebar steel, 50 bags cement',
+    crew_present: 'John Smith (Foreman), Mike Johnson (Operator), Sarah Davis (Laborer), Tom Wilson (Laborer)',
+    notes: 'Weather conditions were perfect for concrete work. No delays encountered. Equipment running smoothly.',
+    created_by: 'user-1',
+    created_by_name: 'John Smith',
+    created_at: '2024-01-22T17:30:00Z',
+    updated_at: '2024-01-22T17:30:00Z'
+  },
+  {
+    id: 'log-2',
+    project_id: 'proj-2',
+    project_name: 'Residential Complex Phase 1',
+    date: '2024-01-22',
+    weather: 'cloudy',
+    work_completed: 'Site survey completed. Marked utility lines and property boundaries. Set up temporary fencing around perimeter.',
+    materials_used: 'Survey stakes, flagging tape, temporary fencing materials',
+    crew_present: 'Lisa Brown (Surveyor), Carlos Rodriguez (Assistant), Dave Miller (Laborer)',
+    notes: 'Discovered underground cable not shown on original plans. Need to contact utility company before proceeding.',
+    created_by: 'user-2',
+    created_by_name: 'Lisa Brown',
+    created_at: '2024-01-22T16:45:00Z',
+    updated_at: '2024-01-22T16:45:00Z'
+  },
+  {
+    id: 'log-3',
+    project_id: 'proj-1',
+    project_name: 'Downtown Office Building',
+    date: '2024-01-21',
+    weather: 'rainy',
+    work_completed: 'Indoor electrical rough-in work continued. Installed conduit runs for floors 2-3. Pulled wire for lighting circuits.',
+    materials_used: '500ft EMT conduit, 1200ft 12AWG wire, junction boxes, wire nuts',
+    crew_present: 'Alex Chen (Electrician), Maria Garcia (Apprentice)',
+    notes: 'Rain prevented outdoor work. Focused on interior electrical. Behind schedule due to weather delays.',
+    created_by: 'user-3',
+    created_by_name: 'Alex Chen',
+    created_at: '2024-01-21T15:20:00Z',
+    updated_at: '2024-01-21T15:20:00Z'
+  }
+];
+
+export const createDataSlice: StateCreator<DataSlice> = (set) => ({
   // ✅ INITIALIZE: Start with mock data for testing
   projects: mockProjects,
   tasks: mockTasks,
   clients: mockClients,
-  dailyLogs: [],
+  dailyLogs: mockDailyLogs,
   isLoading: false,
 
   // Projects
-  setProjects: (projects)=> set({projects}),
-  addProject: (project)=> set((state)=> ({
-    projects: [...state.projects,project]
-  })),
-  updateProject: (id,updates)=> set((state)=> ({
-    projects: state.projects.map(p=> p.id===id ? {...p,...updates} : p)
-  })),
-  removeProject: (id)=> set((state)=> ({
-    projects: state.projects.filter(p=> p.id !==id)
-  })),
+  setProjects: (projects) => set({ projects }),
+  addProject: (project) => 
+    set((state) => ({ 
+      projects: [...state.projects, project] 
+    })),
+  updateProject: (id, updates) => 
+    set((state) => ({
+      projects: state.projects.map(p => 
+        p.id === id ? { ...p, ...updates } : p
+      )
+    })),
+  removeProject: (id) => 
+    set((state) => ({
+      projects: state.projects.filter(p => p.id !== id)
+    })),
 
   // Tasks
-  setTasks: (tasks)=> set({tasks}),
-  addTask: (task)=> set((state)=> ({
-    tasks: [...state.tasks,task]
-  })),
-  updateTask: (id,updates)=> set((state)=> ({
-    tasks: state.tasks.map(t=> t.id===id ? {...t,...updates} : t)
-  })),
-  removeTask: (id)=> set((state)=> ({
-    tasks: state.tasks.filter(t=> t.id !==id)
-  })),
+  setTasks: (tasks) => set({ tasks }),
+  addTask: (task) => 
+    set((state) => ({ 
+      tasks: [...state.tasks, task] 
+    })),
+  updateTask: (id, updates) => 
+    set((state) => ({
+      tasks: state.tasks.map(t => 
+        t.id === id ? { ...t, ...updates } : t
+      )
+    })),
+  removeTask: (id) => 
+    set((state) => ({
+      tasks: state.tasks.filter(t => t.id !== id)
+    })),
 
   // Clients
-  setClients: (clients)=> set({clients}),
-  addClient: (client)=> set((state)=> ({
-    clients: [...state.clients,client]
-  })),
-  updateClient: (id,updates)=> set((state)=> ({
-    clients: state.clients.map(c=> c.id===id ? {...c,...updates} : c)
-  })),
-  removeClient: (id)=> set((state)=> ({
-    clients: state.clients.filter(c=> c.id !==id)
-  })),
+  setClients: (clients) => set({ clients }),
+  addClient: (client) => 
+    set((state) => ({ 
+      clients: [...state.clients, client] 
+    })),
+  updateClient: (id, updates) => 
+    set((state) => ({
+      clients: state.clients.map(c => 
+        c.id === id ? { ...c, ...updates } : c
+      )
+    })),
+  removeClient: (id) => 
+    set((state) => ({
+      clients: state.clients.filter(c => c.id !== id)
+    })),
 
   // Daily Logs
-  setDailyLogs: (dailyLogs)=> set({dailyLogs}),
-  addDailyLog: (log)=> set((state)=> ({
-    dailyLogs: [...state.dailyLogs,log]
-  })),
+  setDailyLogs: (dailyLogs) => set({ dailyLogs }),
+  addDailyLog: (log) => 
+    set((state) => ({ 
+      dailyLogs: [log, ...state.dailyLogs] 
+    })),
+  updateDailyLog: (id, updates) => 
+    set((state) => ({
+      dailyLogs: state.dailyLogs.map(log => 
+        log.id === id ? { ...log, ...updates } : log
+      )
+    })),
+  removeDailyLog: (id) => 
+    set((state) => ({
+      dailyLogs: state.dailyLogs.filter(log => log.id !== id)
+    })),
 
-  setLoading: (isLoading)=> set({isLoading}),
+  setLoading: (isLoading) => set({ isLoading }),
 });

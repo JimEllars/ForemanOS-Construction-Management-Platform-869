@@ -45,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         animate={{ x: isOpen ? 0 : -280 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={clsx(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-secondary-900 border-r border-secondary-200 dark:border-secondary-700 transform md:relative md:translate-x-0 md:block',
+          'fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-secondary-900 border-r border-secondary-200 dark:border-secondary-700 transform md:relative md:translate-x-0 md:block transition-colors',
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
       >
@@ -55,7 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">ForemanOS</h2>
             <button
               onClick={onClose}
-              className="md:hidden p-1 rounded-md text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-secondary-100"
+              className="md:hidden p-1 rounded-md text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-secondary-100 transition-colors"
             >
               <SafeIcon icon={FiX} className="w-5 h-5" />
             </button>
