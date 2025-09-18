@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useStore } from './store';
 import { supabase } from './lib/supabaseClient';
 import { useSupabaseData } from './hooks/useSupabaseData';
+import { useOfflineSync } from './hooks/useOfflineSync';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 
@@ -24,6 +25,7 @@ import DailyLogsScreen from './features/daily-logs/DailyLogsScreen';
 import TimeTrackingScreen from './features/time-tracking/TimeTrackingScreen';
 import DocumentsScreen from './features/documents/DocumentsScreen';
 import SettingsScreen from './features/settings/SettingsScreen';
+import TeamScreen from './features/team/TeamScreen';
 
 function App() {
   // ✅ AUTHENTICATION ENABLED: Set to false to use real authentication
@@ -43,6 +45,9 @@ function App() {
 
   // Load supplementary data when authenticated
   useSupabaseData();
+
+  // Initialize the offline sync service
+  useOfflineSync();
 
   useEffect(() => {
     if (BYPASS_AUTH) {
@@ -250,6 +255,7 @@ function App() {
                 <Route path="daily-logs" element={<DailyLogsScreen />} />
                 <Route path="time-tracking" element={<TimeTrackingScreen />} />
                 <Route path="documents" element={<DocumentsScreen />} />
+                <Route path="team" element={<TeamScreen />} />
                 <Route path="settings" element={<SettingsScreen />} />
               </Route>
 

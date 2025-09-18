@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useStore } from '../store';
+import { supabase } from '../lib/supabaseClient';
 import { projectService } from '../services/projectService';
 import { taskService } from '../services/taskService';
 import { clientService } from '../services/clientService';
@@ -34,6 +35,13 @@ export const useSupabaseData = () => {
     if (isAuthenticated && company?.id && user?.id) {
       console.log('🔄 User fully authenticated with company, loading dashboard data...');
       loadDashboardData();
+
+      const subscription = setupRealtimeSubscriptions(company.id);
+
+      return () => {
+        console.log(' unsubscribing from realtime updates');
+        supabase.removeChannel(subscription);
+      };
     } else {
       console.log('⏸️ Waiting for full authentication:', { 
         isAuthenticated, 
@@ -128,3 +136,51 @@ export const useSupabaseData = () => {
 
   return { refreshData };
 };
+
+const setupRealtimeSubscriptions = (companyId: string) => {
+  const { getState } = useStore;
+
+  const handleProjectChange = (payload) => {
+    console.log('Realtime change received for projects:', payload);
+    switch (payload.eventType) {
+      case 'INSERT':
+        getState().data.addProject(payload.new);
+        break;
+      case 'UPDATE':
+        getState().data.updateProject(payload.new.id, payload.new);
+        break;
+      case 'DELETE':
+        getState().data.removeProject(payload.old.id);
+        break;
+    }
+  };
+
+  const handleTaskChange = (payload) => {
+    console.log('Realtime change received for tasks:', payload);
+    switch (payload.eventType) {
+      case 'INSERT':
+        getState().data.addTask(payload.new);
+        break;
+      case 'UPDATE':
+        getState().data.updateTask(payload.new.id, payload.new);
+        break;
+      case 'DELETE':
+        getState().data.removeTask(payload.old.id);
+        break;
+    }
+  };
+
+  const channel = supabase.channel(`public:tables`);
+  channel
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'projects_fos2025', filter: `company_id=eq.${companyId}` }, handleProjectChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks_fos2025' }, handleTaskChange) // Note: needs better filtering
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('✅ Subscribed to realtime updates');
+      } else {
+        console.log('Failed to subscribe to realtime updates:', status);
+      }
+    });
+
+  return channel;
+}

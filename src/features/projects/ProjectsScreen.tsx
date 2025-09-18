@@ -7,11 +7,16 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import CreateProjectModal from './CreateProjectModal';
 import { useStore } from '../../store';
+import DataLoadingState from '../../components/ui/DataLoadingState';
 
 const { FiPlus, FiSearch, FiCalendar, FiDollarSign } = FiIcons;
 
 const ProjectsScreen: React.FC = () => {
-  const { projects } = useStore();
+  const { projects, isLoading } = useStore(state => ({
+    projects: state.data.projects,
+    isLoading: state.data.isLoading,
+  }));
+  const isOnline = useStore(state => state.offline.isOnline);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -34,9 +39,14 @@ const ProjectsScreen: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <DataLoadingState
+      isLoading={isLoading && projects.length === 0}
+      isOnline={isOnline}
+      loadingMessage="Loading projects..."
+    >
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-secondary-900">Projects</h1>
           <p className="text-secondary-600">Manage your construction projects</p>
@@ -128,7 +138,8 @@ const ProjectsScreen: React.FC = () => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
       />
-    </div>
+      </div>
+    </DataLoadingState>
   );
 };
 

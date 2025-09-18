@@ -1,7 +1,9 @@
 import { supabase } from '../lib/supabaseClient';
 import { TimeEntry } from '../types';
+import { useStore } from '../store';
 
 const TABLE_NAME = 'time_entries_fos2025';
+const { getState } = useStore;
 
 export const timeTrackingService = {
   /**
@@ -72,95 +74,88 @@ export const timeTrackingService = {
    * Create a new time entry
    */
   async createTimeEntry(entryData: Omit<TimeEntry, 'id' | 'created_at' | 'updated_at' | 'project_name' | 'task_name' | 'user_name'>): Promise<TimeEntry> {
-    try {
-      console.log('📝 Creating new time entry for project:', entryData.project_id);
+    const { isOnline, addPendingChange } = getState().offline;
+    const { data: dataState } = getState();
 
-      const { data, error } = await supabase
-        .from(TABLE_NAME)
-        .insert({
-          ...entryData,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select(`
-          *,
-          projects_fos2025!inner(name),
-          tasks_fos2025(title),
-          profiles_fos2025!time_entries_fos2025_user_id_fkey(name)
-        `)
-        .single();
+    if (!isOnline) {
+      const tempId = `temp_${Date.now()}`;
+      const optimisticEntry: TimeEntry = {
+        ...entryData,
+        id: tempId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        syncStatus: 'pending',
+        project_name: dataState.projects.find(p => p.id === entryData.project_id)?.name || 'Unknown Project',
+        task_name: entryData.task_id ? dataState.tasks.find(t => t.id === entryData.task_id)?.title || null : null,
+        user_name: getState().auth.user?.name || 'Unknown User',
+      };
+      addPendingChange({ type: 'CREATE', entity: 'time_entry', payload: entryData, tempId });
+      getState().timeTracking.addTimeEntry(optimisticEntry);
+      return optimisticEntry;
+    }
 
-      if (error) {
-        console.error('❌ Error creating time entry:', error);
-        throw error;
-      }
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .insert({ ...entryData, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .select('*, projects_fos2025!inner(name), tasks_fos2025(title), profiles_fos2025!time_entries_fos2025_user_id_fkey(name)')
+      .single();
 
-      console.log('✅ Time entry created successfully:', data.id);
-      return timeTrackingService.transformTimeEntryRecord(data);
-
-    } catch (error: any) {
-      console.error('❌ Time entry creation failed:', error);
+    if (error) {
+      console.error('❌ Error creating time entry:', error);
       throw error;
     }
+    return timeTrackingService.transformTimeEntryRecord(data);
   },
 
   /**
    * Update an existing time entry
    */
   async updateTimeEntry(id: string, updates: Partial<TimeEntry>): Promise<TimeEntry> {
-    try {
-      console.log('📝 Updating time entry:', id);
+    const { isOnline, addPendingChange } = getState().offline;
 
-      const { data, error } = await supabase
-        .from(TABLE_NAME)
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select(`
-          *,
-          projects_fos2025!inner(name),
-          tasks_fos2025(title),
-          profiles_fos2025!time_entries_fos2025_user_id_fkey(name)
-        `)
-        .single();
-
-      if (error) {
-        console.error('❌ Error updating time entry:', error);
-        throw error;
+    if (!isOnline) {
+      addPendingChange({ type: 'UPDATE', entity: 'time_entry', payload: { id, ...updates } });
+      const updatedEntry = { ...getState().timeTracking.timeEntries.find(t => t.id === id), ...updates, syncStatus: 'pending' } as TimeEntry;
+      getState().timeTracking.updateTimeEntry(id, updatedEntry);
+      if (updates.is_running === false) {
+        getState().timeTracking.setRunningTimer(null);
       }
+      return updatedEntry;
+    }
 
-      console.log('✅ Time entry updated successfully');
-      return timeTrackingService.transformTimeEntryRecord(data);
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('*, projects_fos2025!inner(name), tasks_fos2025(title), profiles_fos2025!time_entries_fos2025_user_id_fkey(name)')
+      .single();
 
-    } catch (error: any) {
-      console.error('❌ Time entry update failed:', error);
+    if (error) {
+      console.error('❌ Error updating time entry:', error);
       throw error;
     }
+    return timeTrackingService.transformTimeEntryRecord(data);
   },
 
   /**
    * Delete a time entry
    */
   async deleteTimeEntry(id: string): Promise<void> {
-    try {
-      console.log('🗑️ Deleting time entry:', id);
+    const { isOnline, addPendingChange } = getState().offline;
 
-      const { error } = await supabase
-        .from(TABLE_NAME)
-        .delete()
-        .eq('id', id);
+    if (!isOnline) {
+      addPendingChange({ type: 'DELETE', entity: 'time_entry', payload: { id } });
+      getState().timeTracking.removeTimeEntry(id);
+      return;
+    }
 
-      if (error) {
-        console.error('❌ Error deleting time entry:', error);
-        throw error;
-      }
+    const { error } = await supabase
+      .from(TABLE_NAME)
+      .delete()
+      .eq('id', id);
 
-      console.log('✅ Time entry deleted successfully');
-
-    } catch (error: any) {
-      console.error('❌ Time entry deletion failed:', error);
+    if (error) {
+      console.error('❌ Error deleting time entry:', error);
       throw error;
     }
   },

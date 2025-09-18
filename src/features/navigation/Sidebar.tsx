@@ -20,6 +20,7 @@ const navigationItems = [
   { name: 'Daily Logs', href: '/app/daily-logs', icon: FiFileText },
   { name: 'Time Tracking', href: '/app/time-tracking', icon: FiClock },
   { name: 'Documents', href: '/app/documents', icon: FiUpload },
+  { name: 'Team', href: '/app/team', icon: FiUsers },
   { name: 'Settings', href: '/app/settings', icon: FiSettings },
 ];
 
