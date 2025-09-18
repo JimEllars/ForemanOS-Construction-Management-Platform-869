@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../components/common/SafeIcon';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -10,16 +10,17 @@ interface StatCardProps {
   icon: React.ElementType;
   change?: string;
   changeType?: 'increase' | 'decrease';
+  href?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, change, changeType }) => {
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, change, changeType, href }) => {
   const iconColor = changeType === 'increase' ? 'text-success-600' :
                     changeType === 'decrease' ? 'text-danger-600' : 'text-primary-600';
   const iconBgColor = changeType === 'increase' ? 'bg-success-100' :
                       changeType === 'decrease' ? 'bg-danger-100' : 'bg-primary-100';
 
-  return (
-    <Card className="shadow-sm hover:shadow-lg transition-shadow duration-300">
+  const cardContent = (
+    <Card className="h-full shadow-sm hover:shadow-lg hover:border-primary-500/50 transition-all duration-300 dark:hover:border-primary-500">
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex-1">
@@ -41,6 +42,16 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, change, changeT
       </CardContent>
     </Card>
   );
+
+  if (href) {
+    return (
+      <Link to={href} className="block h-full">
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return cardContent;
 };
 
 export default StatCard;

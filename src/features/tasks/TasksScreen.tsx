@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../components/common/SafeIcon';
@@ -15,9 +16,13 @@ const { FiPlus, FiSearch, FiCalendar, FiUser, FiEdit2, FiTrash2, FiCheckSquare, 
 
 const TasksScreen: React.FC = () => {
   const { tasks, projects, removeTask } = useStore();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') || 'all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [miscFilter, setMiscFilter] = useState<string>(searchParams.get('filter') || 'all');
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -30,9 +35,28 @@ const TasksScreen: React.FC = () => {
     
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+
+    const matchesMisc = () => {
+      if (miscFilter === 'all') return true;
+      if (miscFilter === 'overdue') {
+        return task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed';
+      }
+      if (miscFilter === 'pending') {
+        return task.status !== 'completed';
+      }
+      return true;
+    };
     
-    return matchesSearch && matchesStatus && matchesPriority;
+    return matchesSearch && matchesStatus && matchesPriority && matchesMisc();
   });
+
+  // Effect to sync URL params with state
+  useEffect(() => {
+    const newParams = new URLSearchParams();
+    if (statusFilter !== 'all') newParams.set('status', statusFilter);
+    if (miscFilter !== 'all') newParams.set('filter', miscFilter);
+    setSearchParams(newParams);
+  }, [statusFilter, miscFilter, setSearchParams]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -179,7 +203,10 @@ const TasksScreen: React.FC = () => {
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setMiscFilter('all'); // Reset misc filter when status changes
+          }}
           className="px-3 py-2 border border-secondary-300 dark:border-secondary-600 rounded-md bg-white dark:bg-secondary-800 text-secondary-900 dark:text-secondary-100 focus:ring-2 focus:ring-primary-500"
         >
           <option value="all">All Status</option>

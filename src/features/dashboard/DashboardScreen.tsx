@@ -68,22 +68,26 @@ const DashboardScreen: React.FC = () => {
               title="Active Projects"
               value={activeProjects}
               icon={FiFolderPlus}
+              href="/app/projects?filter=in_progress"
             />
             <StatCard
               title="Total Clients"
               value={clients.length}
               icon={FiUsers}
+              href="/app/clients"
             />
             <StatCard
               title="Pending Tasks"
               value={pendingTasks}
               icon={FiCheckSquare}
+              href="/app/tasks?filter=pending"
             />
             <StatCard
               title="Overdue Tasks"
               value={overdueTasks}
               icon={FiAlertTriangle}
               changeType={overdueTasks > 0 ? 'decrease' : undefined}
+              href="/app/tasks?filter=overdue"
             />
           </div>
 
