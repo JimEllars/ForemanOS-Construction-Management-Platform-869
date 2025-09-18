@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { formatDistanceToNow, isPast } from 'date-fns';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../components/common/SafeIcon';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -176,15 +177,22 @@ const TeamScreen: React.FC = () => {
           <CardContent>
             {pendingInvitations.length > 0 ? (
               <ul className="divide-y divide-secondary-200 dark:divide-secondary-700">
-                {pendingInvitations.map(invitation => (
-                  <li key={invitation.id} className="py-3 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-secondary-900 dark:text-secondary-100">{invitation.email}</p>
-                      <p className="text-sm text-secondary-500 dark:text-secondary-400">Role: {invitation.role}</p>
-                    </div>
-                    <span className="text-sm capitalize px-2 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300">{invitation.status}</span>
-                  </li>
-                ))}
+                {pendingInvitations.map(invitation => {
+                  const hasExpired = isPast(new Date(invitation.expires_at));
+                  return (
+                    <li key={invitation.id} className="py-3 flex items-center justify-between">
+                      <div>
+                        <p className={`font-medium text-secondary-900 dark:text-secondary-100 ${hasExpired ? 'line-through' : ''}`}>{invitation.email}</p>
+                        <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                          Role: {invitation.role} • {hasExpired ? 'Expired' : `Expires in ${formatDistanceToNow(new Date(invitation.expires_at))}`}
+                        </p>
+                      </div>
+                      <span className={`text-sm capitalize px-2 py-1 rounded-full ${hasExpired ? 'bg-danger-100 text-danger-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                        {hasExpired ? 'Expired' : invitation.status}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <p className="text-center text-secondary-500 py-4">No pending invitations.</p>

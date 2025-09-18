@@ -15,6 +15,7 @@ import AppLayout from './layouts/AppLayout';
 import LoginScreen from './features/auth/LoginScreen';
 import RegisterScreen from './features/auth/RegisterScreen';
 import ForgotPasswordScreen from './features/auth/ForgotPasswordScreen';
+import AcceptInvitationScreen from './features/auth/AcceptInvitationScreen';
 
 // App Screens
 import DashboardScreen from './features/dashboard/DashboardScreen';
@@ -241,6 +242,7 @@ function App() {
                 <Route path="login" element={<LoginScreen />} />
                 <Route path="register" element={<RegisterScreen />} />
                 <Route path="forgot-password" element={<ForgotPasswordScreen />} />
+                <Route path="accept-invitation" element={<AcceptInvitationScreen />} />
               </Route>
 
               {/* App Routes */}

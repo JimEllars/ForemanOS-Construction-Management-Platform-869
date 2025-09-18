@@ -53,5 +53,26 @@ export const teamService = {
       throw error;
     }
     return data;
+  },
+
+  async validateInvitationToken(token: string) {
+    const { data, error } = await supabase.functions.invoke(`accept-invitation?token=${token}`);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data;
+  },
+
+  async acceptInvitation(token: string) {
+    const { data, error } = await supabase.functions.invoke('accept-invitation', {
+      body: { token },
+      method: 'POST',
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data;
   }
 };
