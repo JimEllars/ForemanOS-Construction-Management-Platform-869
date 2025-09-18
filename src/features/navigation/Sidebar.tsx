@@ -6,7 +6,7 @@ import SafeIcon from '../../components/common/SafeIcon';
 import { clsx } from 'clsx';
 import { useStore } from '../../store';
 
-const { FiHome, FiFolderPlus, FiCheckSquare, FiUsers, FiFileText, FiClock, FiUpload, FiX, FiSettings } = FiIcons;
+const { FiHome, FiFolderPlus, FiCheckSquare, FiUsers, FiFileText, FiClock, FiUpload, FiX, FiSettings, FiDollarSign } = FiIcons;
 
 interface SidebarProps {
   isOpen: boolean;
@@ -18,6 +18,7 @@ const baseNavigationItems = [
   { name: 'Projects', href: '/app/projects', icon: FiFolderPlus, roles: ['admin', 'manager', 'worker'] },
   { name: 'Tasks', href: '/app/tasks', icon: FiCheckSquare, roles: ['admin', 'manager', 'worker'] },
   { name: 'Clients', href: '/app/clients', icon: FiUsers, roles: ['admin', 'manager'] },
+  { name: 'Quotes', href: '/app/quotes', icon: FiDollarSign, roles: ['admin', 'manager'] },
   { name: 'Daily Logs', href: '/app/daily-logs', icon: FiFileText, roles: ['admin', 'manager', 'worker'] },
   { name: 'Time Tracking', href: '/app/time-tracking', icon: FiClock, roles: ['admin', 'manager', 'worker'] },
   { name: 'Documents', href: '/app/documents', icon: FiUpload, roles: ['admin', 'manager', 'worker'] },

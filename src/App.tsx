@@ -27,6 +27,7 @@ import TimeTrackingScreen from './features/time-tracking/TimeTrackingScreen';
 import DocumentsScreen from './features/documents/DocumentsScreen';
 import SettingsScreen from './features/settings/SettingsScreen';
 import TeamScreen from './features/team/TeamScreen';
+import QuotesScreen from './features/quotes/QuotesScreen';
 
 function App() {
   // ✅ AUTHENTICATION ENABLED: Set to false to use real authentication
@@ -254,6 +255,7 @@ function App() {
                 <Route path="projects" element={<ProjectsScreen />} />
                 <Route path="tasks" element={<TasksScreen />} />
                 <Route path="clients" element={<ClientsScreen />} />
+                <Route path="quotes" element={<QuotesScreen />} />
                 <Route path="daily-logs" element={<DailyLogsScreen />} />
                 <Route path="time-tracking" element={<TimeTrackingScreen />} />
                 <Route path="documents" element={<DocumentsScreen />} />
