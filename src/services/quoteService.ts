@@ -123,4 +123,16 @@ export const quoteService = {
       throw error;
     }
   },
+
+  async downloadQuotePdf(quoteId: string) {
+    const { data, error } = await supabase.functions.invoke(`quote-pdf?quoteId=${quoteId}`);
+
+    if (error) {
+      console.error('Error generating PDF:', error);
+      throw new Error('Failed to generate PDF. ' + error.message);
+    }
+
+    // The function returns the PDF as a blob
+    return data;
+  },
 };

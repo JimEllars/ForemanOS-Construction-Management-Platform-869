@@ -34,6 +34,7 @@ const QuoteBuilder: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     if (quoteId) {
@@ -124,9 +125,28 @@ const QuoteBuilder: React.FC = () => {
     }
   };
 
-  const handleDownloadPdf = () => {
-    console.log("Simulating PDF download for quote...");
-    alert("PDF download is not yet implemented. This is a placeholder.");
+  const handleDownloadPdf = async () => {
+    if (!quoteId) {
+      alert("Please save the quote before downloading the PDF.");
+      return;
+    }
+    setIsDownloading(true);
+    try {
+      const pdfBlob = await quoteService.downloadQuotePdf(quoteId);
+      const url = window.URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Quote-${quoteId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (err) {
+      console.error("Failed to download PDF", err);
+      alert("Failed to download PDF. Please check the console for details.");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   if (isLoading) {
@@ -183,8 +203,12 @@ const QuoteBuilder: React.FC = () => {
               <div className="flex justify-between font-bold text-lg"><span>Total:</span><span>${totals.total}</span></div>
             </CardContent>
             <CardFooter className="flex gap-2">
-              <Button onClick={handleSave} className="w-full"><SafeIcon icon={FiSave} className="mr-2" /> Save Quote</Button>
-              <Button onClick={handleDownloadPdf} variant="outline" className="w-full"><SafeIcon icon={FiDownload} className="mr-2" /> Download PDF</Button>
+              <Button onClick={handleSave} className="w-full" disabled={isSaving}>
+                {isSaving ? 'Saving...' : <><SafeIcon icon={FiSave} className="mr-2" /> Save Quote</>}
+              </Button>
+              <Button onClick={handleDownloadPdf} variant="outline" className="w-full" disabled={isDownloading || !quoteId}>
+                {isDownloading ? 'Downloading...' : <><SafeIcon icon={FiDownload} className="mr-2" /> Download PDF</>}
+              </Button>
             </CardFooter>
           </Card>
         </div>
@@ -198,7 +222,7 @@ const QuoteBuilder: React.FC = () => {
         <CardContent>
           <div className="space-y-4">
             {lineItems.map((item, index) => (
-              <div key={item.id} className="flex items-center gap-4">
+              <div key={index} className="flex items-center gap-4">
                 <div className="flex-grow">
                   <Input type="text" name="description" placeholder="Item description" value={item.description} onChange={e => handleLineItemChange(index, e)} />
                 </div>
@@ -206,7 +230,7 @@ const QuoteBuilder: React.FC = () => {
                   <Input type="number" name="quantity" placeholder="Qty" value={item.quantity} onChange={e => handleLineItemChange(index, e)} />
                 </div>
                 <div className="w-32">
-                  <Input type="number" name="unitPrice" placeholder="Unit Price" value={item.unitPrice} onChange={e => handleLineItemChange(index, e)} />
+                  <Input type="number" name="unit_price" placeholder="Unit Price" value={item.unit_price} onChange={e => handleLineItemChange(index, e)} />
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => removeLineItem(index)} className="text-danger-500">
                   <SafeIcon icon={FiTrash2} />
