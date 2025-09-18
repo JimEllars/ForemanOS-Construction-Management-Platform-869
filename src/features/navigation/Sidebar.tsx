@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../components/common/SafeIcon';
 import { clsx } from 'clsx';
+import { useStore } from '../../store';
 
 const { FiHome, FiFolderPlus, FiCheckSquare, FiUsers, FiFileText, FiClock, FiUpload, FiX, FiSettings } = FiIcons;
 
@@ -12,19 +13,24 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-const navigationItems = [
-  { name: 'Dashboard', href: '/app', icon: FiHome },
-  { name: 'Projects', href: '/app/projects', icon: FiFolderPlus },
-  { name: 'Tasks', href: '/app/tasks', icon: FiCheckSquare },
-  { name: 'Clients', href: '/app/clients', icon: FiUsers },
-  { name: 'Daily Logs', href: '/app/daily-logs', icon: FiFileText },
-  { name: 'Time Tracking', href: '/app/time-tracking', icon: FiClock },
-  { name: 'Documents', href: '/app/documents', icon: FiUpload },
-  { name: 'Team', href: '/app/team', icon: FiUsers },
-  { name: 'Settings', href: '/app/settings', icon: FiSettings },
+const baseNavigationItems = [
+  { name: 'Dashboard', href: '/app', icon: FiHome, roles: ['admin', 'manager', 'worker'] },
+  { name: 'Projects', href: '/app/projects', icon: FiFolderPlus, roles: ['admin', 'manager', 'worker'] },
+  { name: 'Tasks', href: '/app/tasks', icon: FiCheckSquare, roles: ['admin', 'manager', 'worker'] },
+  { name: 'Clients', href: '/app/clients', icon: FiUsers, roles: ['admin', 'manager'] },
+  { name: 'Daily Logs', href: '/app/daily-logs', icon: FiFileText, roles: ['admin', 'manager', 'worker'] },
+  { name: 'Time Tracking', href: '/app/time-tracking', icon: FiClock, roles: ['admin', 'manager', 'worker'] },
+  { name: 'Documents', href: '/app/documents', icon: FiUpload, roles: ['admin', 'manager', 'worker'] },
+  { name: 'Team', href: '/app/team', icon: FiUsers, roles: ['admin', 'manager'] },
+  { name: 'Settings', href: '/app/settings', icon: FiSettings, roles: ['admin'] },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+  const user = useStore(state => state.auth.user);
+  const userRole = user?.role || 'worker';
+
+  const navigationItems = baseNavigationItems.filter(item => item.roles.includes(userRole));
+
   return (
     <>
       {/* Mobile overlay */}
