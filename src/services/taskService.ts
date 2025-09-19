@@ -1,7 +1,9 @@
 import { supabase } from '../lib/supabaseClient';
 import { Task } from '../types';
+import { useStore } from '../store';
 
 const TABLE_NAME = 'tasks_fos2025';
+const { getState } = useStore;
 
 export const taskService = {
   async getTasksByProject(projectId: string): Promise<Task[]> {
@@ -109,7 +111,21 @@ export const taskService = {
   },
 
   async createTask(taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>): Promise<Task> {
-    console.log('📝 Creating new task:', taskData.title);
+    const { isOnline, addPendingChange } = getState().offline;
+
+    if (!isOnline) {
+      const tempId = `temp_${Date.now()}`;
+      const optimisticTask: Task = {
+        ...taskData,
+        id: tempId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        syncStatus: 'pending',
+      };
+      addPendingChange({ type: 'CREATE', entity: 'task', payload: taskData, tempId });
+      getState().data.addTask(optimisticTask);
+      return optimisticTask;
+    }
     
     const { data, error } = await supabase
       .from(TABLE_NAME)
@@ -122,12 +138,18 @@ export const taskService = {
       throw error;
     }
 
-    console.log('✅ Task created successfully:', data.title);
     return data;
   },
 
   async updateTask(id: string, updates: Partial<Task>): Promise<Task> {
-    console.log('📝 Updating task:', id);
+    const { isOnline, addPendingChange } = getState().offline;
+
+    if (!isOnline) {
+      addPendingChange({ type: 'UPDATE', entity: 'task', payload: { id, ...updates } });
+      const updatedTask = { ...getState().data.tasks.find(t => t.id === id), ...updates, syncStatus: 'pending' } as Task;
+      getState().data.updateTask(id, updatedTask);
+      return updatedTask;
+    }
     
     const { data, error } = await supabase
       .from(TABLE_NAME)
@@ -144,12 +166,17 @@ export const taskService = {
       throw error;
     }
 
-    console.log('✅ Task updated successfully:', data.title);
     return data;
   },
 
   async deleteTask(id: string): Promise<void> {
-    console.log('🗑️ Deleting task:', id);
+    const { isOnline, addPendingChange } = getState().offline;
+
+    if (!isOnline) {
+      addPendingChange({ type: 'DELETE', entity: 'task', payload: { id } });
+      getState().data.removeTask(id);
+      return;
+    }
     
     const { error } = await supabase
       .from(TABLE_NAME)
@@ -160,7 +187,5 @@ export const taskService = {
       console.error('❌ Error deleting task:', error);
       throw error;
     }
-
-    console.log('✅ Task deleted successfully');
   }
 };

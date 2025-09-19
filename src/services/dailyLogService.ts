@@ -1,7 +1,9 @@
 import { supabase } from '../lib/supabaseClient';
 import { DailyLog } from '../types';
+import { useStore } from '../store';
 
 const TABLE_NAME = 'daily_logs_fos2025';
+const { getState } = useStore;
 
 export const dailyLogService = {
   /**
@@ -72,93 +74,83 @@ export const dailyLogService = {
    * Create a new daily log
    */
   async createDailyLog(logData: Omit<DailyLog, 'id' | 'created_at' | 'updated_at' | 'project_name' | 'created_by_name'>): Promise<DailyLog> {
-    try {
-      console.log('📝 Creating new daily log:', logData.date, 'for project:', logData.project_id);
+    const { isOnline, addPendingChange } = getState().offline;
 
-      const { data, error } = await supabase
-        .from(TABLE_NAME)
-        .insert({
-          ...logData,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select(`
-          *,
-          projects_fos2025!inner(name),
-          profiles_fos2025!daily_logs_fos2025_created_by_fkey(name)
-        `)
-        .single();
+    if (!isOnline) {
+      const tempId = `temp_${Date.now()}`;
+      const optimisticLog: DailyLog = {
+        ...logData,
+        id: tempId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        syncStatus: 'pending',
+        project_name: getState().data.projects.find(p => p.id === logData.project_id)?.name || 'Unknown Project',
+        created_by_name: getState().auth.user?.name || 'Unknown User',
+      };
+      addPendingChange({ type: 'CREATE', entity: 'daily_log', payload: logData, tempId });
+      getState().data.addDailyLog(optimisticLog);
+      return optimisticLog;
+    }
 
-      if (error) {
-        console.error('❌ Error creating daily log:', error);
-        throw error;
-      }
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .insert({ ...logData, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .select('*, projects_fos2025!inner(name), profiles_fos2025!daily_logs_fos2025_created_by_fkey(name)')
+      .single();
 
-      console.log('✅ Daily log created successfully:', data.id);
-      return dailyLogService.transformDailyLogRecord(data);
-
-    } catch (error: any) {
-      console.error('❌ Daily log creation failed:', error);
+    if (error) {
+      console.error('❌ Error creating daily log:', error);
       throw error;
     }
+    return dailyLogService.transformDailyLogRecord(data);
   },
 
   /**
    * Update an existing daily log
    */
   async updateDailyLog(id: string, updates: Partial<DailyLog>): Promise<DailyLog> {
-    try {
-      console.log('📝 Updating daily log:', id);
+    const { isOnline, addPendingChange } = getState().offline;
 
-      const { data, error } = await supabase
-        .from(TABLE_NAME)
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select(`
-          *,
-          projects_fos2025!inner(name),
-          profiles_fos2025!daily_logs_fos2025_created_by_fkey(name)
-        `)
-        .single();
+    if (!isOnline) {
+      addPendingChange({ type: 'UPDATE', entity: 'daily_log', payload: { id, ...updates } });
+      const updatedLog = { ...getState().data.dailyLogs.find(l => l.id === id), ...updates, syncStatus: 'pending' } as DailyLog;
+      getState().data.updateDailyLog(id, updatedLog);
+      return updatedLog;
+    }
 
-      if (error) {
-        console.error('❌ Error updating daily log:', error);
-        throw error;
-      }
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('*, projects_fos2025!inner(name), profiles_fos2025!daily_logs_fos2025_created_by_fkey(name)')
+      .single();
 
-      console.log('✅ Daily log updated successfully');
-      return dailyLogService.transformDailyLogRecord(data);
-
-    } catch (error: any) {
-      console.error('❌ Daily log update failed:', error);
+    if (error) {
+      console.error('❌ Error updating daily log:', error);
       throw error;
     }
+    return dailyLogService.transformDailyLogRecord(data);
   },
 
   /**
    * Delete a daily log
    */
   async deleteDailyLog(id: string): Promise<void> {
-    try {
-      console.log('🗑️ Deleting daily log:', id);
+    const { isOnline, addPendingChange } = getState().offline;
 
-      const { error } = await supabase
-        .from(TABLE_NAME)
-        .delete()
-        .eq('id', id);
+    if (!isOnline) {
+      addPendingChange({ type: 'DELETE', entity: 'daily_log', payload: { id } });
+      getState().data.removeDailyLog(id);
+      return;
+    }
 
-      if (error) {
-        console.error('❌ Error deleting daily log:', error);
-        throw error;
-      }
+    const { error } = await supabase
+      .from(TABLE_NAME)
+      .delete()
+      .eq('id', id);
 
-      console.log('✅ Daily log deleted successfully');
-
-    } catch (error: any) {
-      console.error('❌ Daily log deletion failed:', error);
+    if (error) {
+      console.error('❌ Error deleting daily log:', error);
       throw error;
     }
   },
