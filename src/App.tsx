@@ -6,6 +6,7 @@ import { useSupabaseData } from './hooks/useSupabaseData';
 import { useOfflineSync } from './hooks/useOfflineSync';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
+import OfflineSyncIndicator from './components/ui/OfflineSyncIndicator';
 
 // Layouts
 import AuthLayout from './layouts/AuthLayout';
@@ -275,6 +276,7 @@ function App() {
               />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            <OfflineSyncIndicator />
           </Router>
         </ErrorBoundary>
       </div>

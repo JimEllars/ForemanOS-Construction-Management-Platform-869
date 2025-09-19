@@ -1,12 +1,15 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { randomBytes } from 'https://deno.land/std@0.177.0/node/crypto.ts';
+import { Resend } from 'https://esm.sh/resend';
 
 // CORS headers to allow requests from the app's domain
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*', // Replace with your app's domain in production
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
 serve(async (req) => {
   // Handle preflight requests for CORS
@@ -34,7 +37,7 @@ serve(async (req) => {
     // Get the user's company and role
     const { data: companyUser, error: companyUserError } = await supabaseClient
       .from('company_users')
-      .select('company_id, role')
+      .select('company_id, role, companies_fos2025(name)')
       .eq('user_id', user.id)
       .single();
 
@@ -87,14 +90,25 @@ serve(async (req) => {
       throw insertError;
     }
 
-    // ** SIMULATED EMAIL SENDING **
-    // In a real application, you would use the token to create an invitation link
-    // and send it to the user's email address using a service like SendGrid, Postmark, or Resend.
-    // Example:
-    // const invitationLink = `https://yourapp.com/accept-invitation?token=${token}`;
-    // await sendEmail({ to: email, subject: "You're invited to ForemanOS!", body: `Click here to join: ${invitationLink}` });
-    console.log(`SIMULATED: Sending email to ${email} with token ${token}`);
+    // Send invitation email using Resend
+    const invitationLink = `${Deno.env.get('VITE_APP_URL')}/accept-invitation?token=${token}`;
+    const companyName = companyUser.companies_fos2025.name;
+    const inviterName = user.email; // Or user.user_metadata.full_name if available
 
+    await resend.emails.send({
+      from: 'onboarding@resend.dev',
+      to: email,
+      subject: `You're invited to join ${companyName} on ForemanOS`,
+      html: `
+        <p>Hello,</p>
+        <p>You have been invited to join <strong>${companyName}</strong> on ForemanOS by ${inviterName}.</p>
+        <p>Your assigned role is: <strong>${role}</strong>.</p>
+        <p>Click the link below to accept the invitation and set up your account:</p>
+        <a href="${invitationLink}" style="display:inline-block;padding:10px 20px;color:white;background-color:#007bff;text-decoration:none;border-radius:5px;">Accept Invitation</a>
+        <p>If you did not expect this invitation, you can safely ignore this email.</p>
+        <p>Thanks,<br/>The ForemanOS Team</p>
+      `,
+    });
 
     return new Response(JSON.stringify({ success: true, message: 'Invitation sent successfully.' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
