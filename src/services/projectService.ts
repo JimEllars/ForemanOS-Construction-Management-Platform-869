@@ -1,10 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { Project } from '../types';
-import { useStore } from '../store';
 
 const TABLE_NAME = 'projects_fos2025';
-
-const { getState } = useStore;
 
 export const projectService = {
   async getProjectsByCompany(companyId: string): Promise<Project[]> {
@@ -23,23 +20,6 @@ export const projectService = {
   },
 
   async createProject(projectData: Omit<Project, 'id' | 'created_at' | 'updated_at'>): Promise<Project> {
-    const { isOnline, addPendingChange } = getState().offline;
-
-    if (!isOnline) {
-      const tempId = `temp_${Date.now()}`;
-      const optimisticProject: Project = {
-        ...projectData,
-        id: tempId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        syncStatus: 'pending',
-      };
-      addPendingChange({ type: 'CREATE', entity: 'project', payload: projectData, tempId });
-      // We need to update the store directly for optimistic UI
-      getState().data.addProject(optimisticProject);
-      return optimisticProject;
-    }
-
     const { data, error } = await supabase
       .from(TABLE_NAME)
       .insert(projectData)
@@ -55,15 +35,6 @@ export const projectService = {
   },
 
   async updateProject(id: string, updates: Partial<Project>): Promise<Project> {
-    const { isOnline, addPendingChange } = getState().offline;
-
-    if (!isOnline) {
-      addPendingChange({ type: 'UPDATE', entity: 'project', payload: { id, ...updates } });
-      const updatedProject = { ...getState().data.projects.find(p => p.id === id), ...updates, syncStatus: 'pending' } as Project;
-      getState().data.updateProject(id, updatedProject);
-      return updatedProject;
-    }
-
     const { data, error } = await supabase
       .from(TABLE_NAME)
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -80,14 +51,6 @@ export const projectService = {
   },
 
   async deleteProject(id: string): Promise<void> {
-    const { isOnline, addPendingChange } = getState().offline;
-
-    if (!isOnline) {
-      addPendingChange({ type: 'DELETE', entity: 'project', payload: { id } });
-      getState().data.removeProject(id);
-      return;
-    }
-
     const { error } = await supabase
       .from(TABLE_NAME)
       .delete()

@@ -6,7 +6,7 @@ import SafeIcon from '../../components/common/SafeIcon';
 import { clsx } from 'clsx';
 import { useStore } from '../../store';
 
-const { FiHome, FiFolderPlus, FiCheckSquare, FiUsers, FiFileText, FiClock, FiUpload, FiX, FiSettings, FiDollarSign, FiCreditCard } = FiIcons;
+const { FiHome, FiFolderPlus, FiCheckSquare, FiUsers, FiFileText, FiClock, FiUpload, FiX, FiSettings, FiDollarSign, FiCreditCard, FiTrendingDown } = FiIcons;
 
 interface SidebarProps {
   isOpen: boolean;
@@ -32,6 +32,7 @@ const navigationSections = [
     items: [
       { name: 'Quotes', href: '/app/quotes', icon: FiDollarSign, roles: ['admin', 'manager'] },
       { name: 'Invoices', href: '/app/invoices', icon: FiCreditCard, roles: ['admin', 'manager'] },
+      { name: 'Expenses', href: '/app/expenses', icon: FiTrendingDown, roles: ['admin', 'manager'] },
     ]
   },
   {

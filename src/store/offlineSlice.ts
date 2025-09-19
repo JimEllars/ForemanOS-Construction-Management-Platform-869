@@ -20,7 +20,6 @@ export interface OfflineSlice {
   setSyncInProgress: (inProgress: boolean) => void;
   addPendingChange: (change: Omit<PendingChange, 'id' | 'timestamp' | 'retryCount'>) => void;
   removePendingChange: (id: string) => void;
-  incrementRetryCount: (id: string) => void;
   moveToFailed: (id: string) => void;
   retryFailedChange: (id: string) => void;
   clearFailedChanges: () => void;
@@ -50,12 +49,6 @@ export const createOfflineSlice: StateCreator<OfflineSlice> = (set, get) => ({
   
   removePendingChange: (id) => set((state) => ({
     pendingChanges: state.pendingChanges.filter(change => change.id !== id)
-  })),
-
-  incrementRetryCount: (id) => set((state) => ({
-    pendingChanges: state.pendingChanges.map(c =>
-      c.id === id ? { ...c, retryCount: c.retryCount + 1 } : c
-    )
   })),
   
   moveToFailed: (id) => {

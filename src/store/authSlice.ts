@@ -1,7 +1,6 @@
 import { StateCreator } from 'zustand';
 import { User, Company } from '../types';
 import { supabase } from '../lib/supabaseClient';
-import { teamService } from '../services/teamService';
 
 export interface AuthSlice {
   user: User | null;
@@ -281,24 +280,6 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
           company: company.name,
           role: profile.role
         });
-
-        // ✅ INVITATION ACCEPTANCE: Check for and process a pending invitation
-        const pendingToken = localStorage.getItem('pendingInvitationToken');
-        if (pendingToken) {
-          try {
-            console.log('🤝 Found pending invitation token, attempting to accept...');
-            await teamService.acceptInvitation(pendingToken);
-            console.log('✅ Invitation accepted successfully!');
-            // Refresh user and company data to reflect new role/company
-            // This could be a full refresh or a more targeted update
-          } catch (inviteError) {
-            console.error('❌ Failed to accept invitation:', inviteError);
-            // Optionally, set an error in the store to notify the user
-            // For now, we just log it and continue.
-          } finally {
-            localStorage.removeItem('pendingInvitationToken');
-          }
-        }
 
       } catch (dbError: any) {
         console.error('❌ Database operation failed:', dbError);

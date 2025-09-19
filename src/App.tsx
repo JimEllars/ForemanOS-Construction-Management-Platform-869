@@ -30,6 +30,7 @@ import TeamScreen from './features/team/TeamScreen';
 import QuotesScreen from './features/quotes/QuotesScreen';
 import QuoteBuilder from './features/quotes/QuoteBuilder';
 import InvoicesScreen from './features/invoices/InvoicesScreen';
+import ExpensesScreen from './features/expenses/ExpensesScreen';
 
 function App() {
   // ✅ AUTHENTICATION ENABLED: Set to false to use real authentication
@@ -261,6 +262,7 @@ function App() {
                 <Route path="quotes/new" element={<QuoteBuilder />} />
                 <Route path="quotes/edit/:quoteId" element={<QuoteBuilder />} />
                 <Route path="invoices" element={<InvoicesScreen />} />
+                <Route path="expenses" element={<ExpensesScreen />} />
                 <Route path="daily-logs" element={<DailyLogsScreen />} />
                 <Route path="time-tracking" element={<TimeTrackingScreen />} />
                 <Route path="documents" element={<DocumentsScreen />} />
