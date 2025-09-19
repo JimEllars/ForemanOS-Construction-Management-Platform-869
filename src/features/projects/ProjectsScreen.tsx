@@ -8,17 +8,21 @@ import { Input } from '../../components/ui/Input';
 import CreateProjectModal from './CreateProjectModal';
 import { useStore } from '../../store';
 import DataLoadingState from '../../components/ui/DataLoadingState';
+import { exportToCsv } from '../../utils/csv';
 
-const { FiPlus, FiSearch, FiCalendar, FiDollarSign } = FiIcons;
+const { FiPlus, FiSearch, FiCalendar, FiDollarSign, FiDownload } = FiIcons;
 
 const ProjectsScreen: React.FC = () => {
-  const { projects, isLoading } = useStore(state => ({
+  const { projects, isLoading, userRole } = useStore(state => ({
     projects: state.data.projects,
     isLoading: state.data.isLoading,
+    userRole: state.auth.user?.role,
   }));
   const isOnline = useStore(state => state.offline.isOnline);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const canCreateProjects = userRole === 'admin' || userRole === 'manager';
 
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -51,10 +55,18 @@ const ProjectsScreen: React.FC = () => {
           <h1 className="text-2xl font-bold text-secondary-900">Projects</h1>
           <p className="text-secondary-600">Manage your construction projects</p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <SafeIcon icon={FiPlus} className="w-4 h-4 mr-2" />
-          New Project
-        </Button>
+        <div className="flex space-x-2">
+          <Button onClick={() => exportToCsv('projects.csv', filteredProjects)} variant="outline">
+            <SafeIcon icon={FiDownload} className="w-4 h-4 mr-2" />
+            Export to CSV
+          </Button>
+          {canCreateProjects && (
+            <Button onClick={() => setShowCreateModal(true)}>
+              <SafeIcon icon={FiPlus} className="w-4 h-4 mr-2" />
+              New Project
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Search */}
@@ -126,10 +138,12 @@ const ProjectsScreen: React.FC = () => {
           <p className="text-secondary-600 mb-4">
             {searchTerm ? 'Try adjusting your search terms' : 'Get started by creating your first project'}
           </p>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <SafeIcon icon={FiPlus} className="w-4 h-4 mr-2" />
-            Create Project
-          </Button>
+          {canCreateProjects && (
+            <Button onClick={() => setShowCreateModal(true)}>
+              <SafeIcon icon={FiPlus} className="w-4 h-4 mr-2" />
+              Create Project
+            </Button>
+          )}
         </div>
       )}
 

@@ -138,15 +138,20 @@ export const taskService = {
       throw error;
     }
 
+    if (data.assigned_to) {
+      this.sendTaskAssignmentNotification(data);
+    }
+
     return data;
   },
 
   async updateTask(id: string, updates: Partial<Task>): Promise<Task> {
     const { isOnline, addPendingChange } = getState().offline;
+    const originalTask = getState().data.tasks.find(t => t.id === id);
 
     if (!isOnline) {
       addPendingChange({ type: 'UPDATE', entity: 'task', payload: { id, ...updates } });
-      const updatedTask = { ...getState().data.tasks.find(t => t.id === id), ...updates, syncStatus: 'pending' } as Task;
+      const updatedTask = { ...originalTask, ...updates, syncStatus: 'pending' } as Task;
       getState().data.updateTask(id, updatedTask);
       return updatedTask;
     }
@@ -166,7 +171,21 @@ export const taskService = {
       throw error;
     }
 
+    if (updates.assigned_to && updates.assigned_to !== originalTask?.assigned_to) {
+      this.sendTaskAssignmentNotification(data);
+    }
+
     return data;
+  },
+
+  async sendTaskAssignmentNotification(task: Task) {
+    try {
+      await supabase.functions.invoke('send-task-assignment-notification', {
+        body: { task },
+      });
+    } catch (error) {
+      console.error('Failed to send task assignment notification:', error);
+    }
   },
 
   async deleteTask(id: string): Promise<void> {

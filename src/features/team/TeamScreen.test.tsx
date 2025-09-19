@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import TeamScreen from './TeamScreen';
 import { teamService } from '../../services/teamService';
+import { useStore } from '../../store';
 
 // Mock the teamService
 vi.mock('../../services/teamService', () => ({
@@ -11,6 +12,10 @@ vi.mock('../../services/teamService', () => ({
     getPendingInvitations: vi.fn(),
     inviteUser: vi.fn(),
   },
+}));
+
+vi.mock('../../store', () => ({
+  useStore: vi.fn(),
 }));
 
 const mockTeamMembers = [
@@ -24,6 +29,11 @@ describe('TeamScreen', () => {
   beforeEach(() => {
     // Reset mocks before each test
     vi.resetAllMocks();
+    (useStore as any).mockReturnValue({
+      auth: {
+        user: { role: 'admin' }
+      }
+    });
   });
 
   it('renders loading state initially', () => {
