@@ -6,31 +6,54 @@ import SafeIcon from '../../components/common/SafeIcon';
 import { clsx } from 'clsx';
 import { useStore } from '../../store';
 
-const { FiHome, FiFolderPlus, FiCheckSquare, FiUsers, FiFileText, FiClock, FiUpload, FiX, FiSettings, FiDollarSign } = FiIcons;
+const { FiHome, FiFolderPlus, FiCheckSquare, FiUsers, FiFileText, FiClock, FiUpload, FiX, FiSettings, FiDollarSign, FiCreditCard } = FiIcons;
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const baseNavigationItems = [
-  { name: 'Dashboard', href: '/app', icon: FiHome, roles: ['admin', 'manager', 'worker'] },
-  { name: 'Projects', href: '/app/projects', icon: FiFolderPlus, roles: ['admin', 'manager', 'worker'] },
-  { name: 'Tasks', href: '/app/tasks', icon: FiCheckSquare, roles: ['admin', 'manager', 'worker'] },
-  { name: 'Clients', href: '/app/clients', icon: FiUsers, roles: ['admin', 'manager'] },
-  { name: 'Quotes', href: '/app/quotes', icon: FiDollarSign, roles: ['admin', 'manager'] },
-  { name: 'Daily Logs', href: '/app/daily-logs', icon: FiFileText, roles: ['admin', 'manager', 'worker'] },
-  { name: 'Time Tracking', href: '/app/time-tracking', icon: FiClock, roles: ['admin', 'manager', 'worker'] },
-  { name: 'Documents', href: '/app/documents', icon: FiUpload, roles: ['admin', 'manager', 'worker'] },
-  { name: 'Team', href: '/app/team', icon: FiUsers, roles: ['admin', 'manager'] },
-  { name: 'Settings', href: '/app/settings', icon: FiSettings, roles: ['admin'] },
+const navigationSections = [
+  {
+    items: [
+      { name: 'Dashboard', href: '/app', icon: FiHome, roles: ['admin', 'manager', 'worker'] },
+    ]
+  },
+  {
+    title: 'Management',
+    items: [
+      { name: 'Projects', href: '/app/projects', icon: FiFolderPlus, roles: ['admin', 'manager', 'worker'] },
+      { name: 'Tasks', href: '/app/tasks', icon: FiCheckSquare, roles: ['admin', 'manager', 'worker'] },
+      { name: 'Clients', href: '/app/clients', icon: FiUsers, roles: ['admin', 'manager'] },
+    ]
+  },
+  {
+    title: 'Financials',
+    items: [
+      { name: 'Quotes', href: '/app/quotes', icon: FiDollarSign, roles: ['admin', 'manager'] },
+      { name: 'Invoices', href: '/app/invoices', icon: FiCreditCard, roles: ['admin', 'manager'] },
+    ]
+  },
+  {
+    title: 'Field Operations',
+    items: [
+      { name: 'Daily Logs', href: '/app/daily-logs', icon: FiFileText, roles: ['admin', 'manager', 'worker'] },
+      { name: 'Time Tracking', href: '/app/time-tracking', icon: FiClock, roles: ['admin', 'manager', 'worker'] },
+      { name: 'Documents', href: '/app/documents', icon: FiUpload, roles: ['admin', 'manager', 'worker'] },
+    ]
+  },
+  {
+    title: 'Administration',
+    items: [
+      { name: 'Team', href: '/app/team', icon: FiUsers, roles: ['admin', 'manager'] },
+      { name: 'Settings', href: '/app/settings', icon: FiSettings, roles: ['admin'] },
+    ]
+  }
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const user = useStore(state => state.auth.user);
   const userRole = user?.role || 'worker';
-
-  const navigationItems = baseNavigationItems.filter(item => item.roles.includes(userRole));
 
   return (
     <>
@@ -70,25 +93,41 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2">
-            {navigationItems.map((item) => (
-              <NavLink
-                key={item.name}
-                to={item.href}
-                onClick={() => onClose()}
-                className={({ isActive }) =>
-                  clsx(
-                    'flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
-                      : 'text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-secondary-100 hover:bg-secondary-100 dark:hover:bg-secondary-800'
-                  )
-                }
-              >
-                <SafeIcon icon={item.icon} className="w-5 h-5" />
-                <span>{item.name}</span>
-              </NavLink>
-            ))}
+          <nav className="flex-1 p-4 space-y-4">
+            {navigationSections.map((section, sectionIndex) => {
+              const filteredItems = section.items.filter(item => item.roles.includes(userRole));
+              if (filteredItems.length === 0) return null;
+
+              return (
+                <div key={section.title || sectionIndex}>
+                  {section.title && (
+                    <h3 className="px-3 text-xs font-semibold text-secondary-500 uppercase tracking-wider mb-2">
+                      {section.title}
+                    </h3>
+                  )}
+                  <div className="space-y-1">
+                    {filteredItems.map((item) => (
+                      <NavLink
+                        key={item.name}
+                        to={item.href}
+                        onClick={() => onClose()}
+                        className={({ isActive }) =>
+                          clsx(
+                            'flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                            isActive
+                              ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+                              : 'text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-secondary-100 hover:bg-secondary-100 dark:hover:bg-secondary-800'
+                          )
+                        }
+                      >
+                        <SafeIcon icon={item.icon} className="w-5 h-5" />
+                        <span>{item.name}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </nav>
 
           {/* Footer */}

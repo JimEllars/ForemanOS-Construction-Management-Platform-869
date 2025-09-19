@@ -6,14 +6,13 @@ import { Input } from '../../components/ui/Input';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../components/common/SafeIcon';
 import { useStore } from '../../store';
-import { quoteService } from '../../services/quoteService';
-import { invoiceService } from '../../services/invoiceService';
+// import { invoiceService } from '../../services/invoiceService'; // To be created
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
-const { FiPlus, FiTrash2, FiSave, FiDollarSign, FiDownload, FiFile } = FiIcons;
+const { FiPlus, FiTrash2, FiSave, FiDollarSign, FiDownload } = FiIcons;
 
-const QuoteBuilder: React.FC = () => {
-  const { quoteId } = useParams<{ quoteId: string }>();
+const InvoiceBuilder: React.FC = () => {
+  const { invoiceId } = useParams<{ invoiceId: string }>();
   const navigate = useNavigate();
   const { clients, projects, company } = useStore(state => ({
     clients: state.data.clients,
@@ -21,13 +20,12 @@ const QuoteBuilder: React.FC = () => {
     company: state.auth.company,
   }));
 
-  const [quoteDetails, setQuoteDetails] = useState({
+  const [invoiceDetails, setInvoiceDetails] = useState({
     client_id: '',
     project_id: null,
     issue_date: new Date().toISOString().split('T')[0],
-    expiry_date: '',
+    due_date: '',
     notes: '',
-    status: 'draft',
   });
 
   const [lineItems, setLineItems] = useState([
@@ -36,36 +34,12 @@ const QuoteBuilder: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isConverting, setIsConverting] = useState(false);
 
-  useEffect(() => {
-    if (quoteId) {
-      setIsLoading(true);
-      quoteService.getQuoteById(quoteId)
-        .then(data => {
-          setQuoteDetails({
-            client_id: data.client_id,
-            project_id: data.project_id,
-            issue_date: data.issue_date,
-            expiry_date: data.expiry_date,
-            notes: data.notes,
-            status: data.status,
-          });
-          setLineItems(data.quote_line_items.map(item => ({
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-          })));
-        })
-        .catch(err => console.error("Failed to fetch quote", err))
-        .finally(() => setIsLoading(false));
-    }
-  }, [quoteId]);
+  // useEffect to fetch invoice data in edit mode would go here
 
   const handleDetailChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setQuoteDetails(prev => ({ ...prev, [name]: value || null }));
+    setInvoiceDetails(prev => ({ ...prev, [name]: value || null }));
   };
 
   const handleLineItemChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,119 +74,64 @@ const QuoteBuilder: React.FC = () => {
 
   const handleSave = async () => {
     setIsSaving(true);
-    const quoteNumber = `Q-${Date.now()}`; // Simplified quote number generation
-    const quoteData = {
-      ...quoteDetails,
-      company_id: company?.id,
-      quote_number: quoteNumber,
-      total_amount: totals.total,
-      status: 'draft',
-    };
-
-    const finalLineItems = lineItems.map(item => ({
-      ...item,
-      total_price: (parseFloat(String(item.quantity)) || 0) * (parseFloat(String(item.unit_price)) || 0),
-    }));
-
-    try {
-      if (quoteId) {
-        await quoteService.updateQuote(quoteId, quoteData, finalLineItems);
-      } else {
-        await quoteService.createQuote(quoteData, finalLineItems);
-      }
-      navigate('/app/quotes');
-    } catch (err) {
-      console.error("Failed to save quote", err);
-      alert("Failed to save quote. Please check the console for details.");
-    } finally {
-      setIsSaving(false);
-    }
+    console.log("Saving invoice...", { invoiceDetails, lineItems, totals });
+    // This will call invoiceService.createInvoice or updateInvoice
+    await new Promise(res => setTimeout(res, 1000)); // Simulate save
+    setIsSaving(false);
+    navigate('/app/invoices');
   };
 
-  const handleDownloadPdf = async () => {
-    if (!quoteId) {
-      alert("Please save the quote before downloading the PDF.");
-      return;
-    }
-    setIsDownloading(true);
-    try {
-      const pdfBlob = await quoteService.downloadQuotePdf(quoteId);
-      const url = window.URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Quote-${quoteId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-    } catch (err) {
-      console.error("Failed to download PDF", err);
-      alert("Failed to download PDF. Please check the console for details.");
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  const handleConvertToInvoice = async () => {
-    if (!quoteId) return;
-    setIsConverting(true);
-    try {
-      const newInvoice = await invoiceService.createInvoiceFromQuote(quoteId);
-      navigate(`/app/invoices/edit/${newInvoice.id}`);
-    } catch (err) {
-      console.error("Failed to convert to invoice", err);
-      alert("Failed to convert quote to invoice. Please check the console.");
-    } finally {
-      setIsConverting(false);
-    }
+  const handleDownloadPdf = () => {
+    console.log("Simulating PDF download for invoice...");
+    alert("PDF download is not yet implemented. This is a placeholder.");
   };
 
   if (isLoading) {
-    return <LoadingSpinner size="lg" message={quoteId ? "Loading quote..." : "Preparing quote builder..."} />;
+    return <LoadingSpinner size="lg" message={invoiceId ? "Loading invoice..." : "Preparing invoice builder..."} />;
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{quoteId ? "Edit Quote" : "Create New Quote"}</h1>
+      <h1 className="text-2xl font-bold">{invoiceId ? "Edit Invoice" : "Create New Invoice"}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Details */}
         <div className="lg:col-span-2">
           <Card>
-            <CardHeader><CardTitle>Quote Details</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Invoice Details</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="client_id" className="block text-sm font-medium">Client</label>
-                <select id="client_id" name="client_id" value={quoteDetails.client_id} onChange={handleDetailChange} className="mt-1 block w-full form-select">
+                <select id="client_id" name="client_id" value={invoiceDetails.client_id} onChange={handleDetailChange} className="mt-1 block w-full form-select">
                   <option value="">Select a client</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
                 <label htmlFor="project_id" className="block text-sm font-medium">Project (Optional)</label>
-                <select id="project_id" name="project_id" value={quoteDetails.project_id || ''} onChange={handleDetailChange} className="mt-1 block w-full form-select">
+                <select id="project_id" name="project_id" value={invoiceDetails.project_id || ''} onChange={handleDetailChange} className="mt-1 block w-full form-select">
                   <option value="">Select a project</option>
                   {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
               <div>
                 <label htmlFor="issue_date" className="block text-sm font-medium">Issue Date</label>
-                <Input type="date" id="issue_date" name="issue_date" value={quoteDetails.issue_date} onChange={handleDetailChange} />
+                <Input type="date" id="issue_date" name="issue_date" value={invoiceDetails.issue_date} onChange={handleDetailChange} />
               </div>
               <div>
-                <label htmlFor="expiry_date" className="block text-sm font-medium">Expiry Date</label>
-                <Input type="date" id="expiry_date" name="expiry_date" value={quoteDetails.expiry_date || ''} onChange={handleDetailChange} />
+                <label htmlFor="due_date" className="block text-sm font-medium">Due Date</label>
+                <Input type="date" id="due_date" name="due_date" value={invoiceDetails.due_date || ''} onChange={handleDetailChange} />
               </div>
               <div className="md:col-span-2">
                 <label htmlFor="notes" className="block text-sm font-medium">Notes</label>
-                <textarea id="notes" name="notes" value={quoteDetails.notes || ''} onChange={handleDetailChange} rows={3} className="mt-1 block w-full form-textarea"></textarea>
+                <textarea id="notes" name="notes" value={invoiceDetails.notes || ''} onChange={handleDetailChange} rows={3} className="mt-1 block w-full form-textarea"></textarea>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Right Column: Totals & Actions */}
-        <div className="lg:col-span-1 space-y-6">
+        {/* Right Column: Totals */}
+        <div className="lg:col-span-1">
           <Card>
             <CardHeader><CardTitle>Summary</CardTitle></CardHeader>
             <CardContent className="space-y-2">
@@ -220,26 +139,13 @@ const QuoteBuilder: React.FC = () => {
               <div className="flex justify-between"><span>Tax (8%):</span><span>${totals.tax.toFixed(2)}</span></div>
               <div className="flex justify-between font-bold text-lg"><span>Total:</span><span>${totals.total.toFixed(2)}</span></div>
             </CardContent>
-            <CardFooter className="flex flex-col gap-2">
+            <CardFooter className="flex gap-2">
               <Button onClick={handleSave} className="w-full" disabled={isSaving}>
-                {isSaving ? 'Saving...' : <><SafeIcon icon={FiSave} className="mr-2" /> Save Quote</>}
+                {isSaving ? 'Saving...' : <><SafeIcon icon={FiSave} className="mr-2" /> Save Invoice</>}
               </Button>
-              <Button onClick={handleDownloadPdf} variant="outline" className="w-full" disabled={isDownloading || !quoteId}>
-                {isDownloading ? 'Downloading...' : <><SafeIcon icon={FiDownload} className="mr-2" /> Download PDF</>}
-              </Button>
+              <Button onClick={handleDownloadPdf} variant="outline" className="w-full"><SafeIcon icon={FiDownload} className="mr-2" /> Download PDF</Button>
             </CardFooter>
           </Card>
-
-          {quoteId && quoteDetails.status === 'accepted' && (
-            <Card>
-              <CardHeader><CardTitle>Next Steps</CardTitle></CardHeader>
-              <CardContent>
-                <Button onClick={handleConvertToInvoice} className="w-full" disabled={isConverting}>
-                  {isConverting ? 'Converting...' : <><SafeIcon icon={FiFile} className="mr-2" /> Create Invoice</>}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
 
@@ -276,4 +182,4 @@ const QuoteBuilder: React.FC = () => {
   );
 };
 
-export default QuoteBuilder;
+export default InvoiceBuilder;
