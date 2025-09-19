@@ -1,6 +1,9 @@
 import React from 'react';
 import { clsx } from 'clsx';
 
+import React, { useId } from 'react';
+import { clsx } from 'clsx';
+
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -9,14 +12,18 @@ export interface InputProps
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, label, error, ...props }, ref) => {
+    const id = useId();
+    const inputId = props.id || id;
+
     return (
       <div className="space-y-1">
         {label && (
-          <label className="block text-sm font-medium text-secondary-700">
+          <label htmlFor={inputId} className="block text-sm font-medium text-secondary-700">
             {label}
           </label>
         )}
         <input
+          id={inputId}
           type={type}
           className={clsx(
             'flex h-10 w-full rounded-md border border-secondary-300 bg-white px-3 py-2 text-sm placeholder:text-secondary-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50',

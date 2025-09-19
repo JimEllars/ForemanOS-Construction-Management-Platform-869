@@ -15,7 +15,7 @@ export const teamService = {
   },
 
   async getCompanyUsers() {
-    const companyId = useStore.getState().auth.company?.id;
+    const companyId = useStore.getState().company?.id;
     if (!companyId) return [];
 
     const { data, error } = await supabase
@@ -39,7 +39,7 @@ export const teamService = {
   },
 
   async getPendingInvitations() {
-    const companyId = useStore.getState().auth.company?.id;
+    const companyId = useStore.getState().company?.id;
     if (!companyId) return [];
 
     const { data, error } = await supabase

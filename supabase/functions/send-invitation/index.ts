@@ -91,7 +91,7 @@ serve(async (req) => {
     }
 
     // Send invitation email using Resend
-    const invitationLink = `${Deno.env.get('VITE_APP_URL')}/accept-invitation?token=${token}`;
+    const invitationLink = `${Deno.env.get('VITE_APP_URL')}/#/auth/accept-invitation?token=${token}`;
     const companyName = companyUser.companies_fos2025.name;
     const inviterName = user.email; // Or user.user_metadata.full_name if available
 

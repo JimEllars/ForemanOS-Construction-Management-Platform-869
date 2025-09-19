@@ -68,6 +68,16 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ isOpen, onClose, task }) 
 
       const updatedTask = await taskService.updateTask(task.id, updates);
       updateTask(task.id, updatedTask);
+
+      // Send notification if assignee has changed
+      if (updates.assigned_to && updates.assigned_to !== task.assigned_to) {
+        try {
+          await taskService.sendTaskNotification(task.id, updates.assigned_to);
+        } catch (notificationError) {
+          console.error("Failed to send task notification:", notificationError);
+        }
+      }
+
       onClose();
     } catch (err: any) {
       setError(err.message || 'Failed to update task');
@@ -109,10 +119,11 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ isOpen, onClose, task }) 
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
+            <label htmlFor="project_id_edit" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
               Project
             </label>
             <select
+              id="project_id_edit"
               name="project_id"
               value={formData.project_id}
               onChange={handleChange}
@@ -129,10 +140,11 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ isOpen, onClose, task }) 
           </div>
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
+            <label htmlFor="priority_edit" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
               Priority
             </label>
             <select
+              id="priority_edit"
               name="priority"
               value={formData.priority}
               onChange={handleChange}
@@ -147,10 +159,11 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ isOpen, onClose, task }) 
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
+            <label htmlFor="status_edit" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
               Status
             </label>
             <select
+              id="status_edit"
               name="status"
               value={formData.status}
               onChange={handleChange}

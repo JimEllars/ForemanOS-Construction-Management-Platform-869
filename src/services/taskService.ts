@@ -187,5 +187,18 @@ export const taskService = {
       console.error('❌ Error deleting task:', error);
       throw error;
     }
-  }
+  },
+
+  async sendTaskNotification(taskId: string, assigneeId: string) {
+    const { data, error } = await supabase.functions.invoke('send-task-notification', {
+      body: { task_id: taskId, assignee_id: assigneeId },
+    });
+
+    if (error) {
+      // Don't throw an error here, as the task was still created/updated successfully.
+      // Just log the error to the console.
+      console.error('Failed to send task notification:', error);
+    }
+    return data;
+  },
 };

@@ -54,6 +54,16 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
       const newTask = await taskService.createTask(taskData);
       addTask(newTask);
 
+      // Send notification if assigned to someone
+      if (newTask.id && newTask.assigned_to) {
+        try {
+          await taskService.sendTaskNotification(newTask.id, newTask.assigned_to);
+        } catch (notificationError) {
+          // Log error, but don't block UI since task was created
+          console.error("Failed to send task notification:", notificationError);
+        }
+      }
+
       // Reset form and close modal
       setFormData({
         title: '',
@@ -114,10 +124,11 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
+            <label htmlFor="project_id" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
               Project
             </label>
             <select
+              id="project_id"
               name="project_id"
               value={formData.project_id}
               onChange={handleChange}
@@ -134,10 +145,11 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
           </div>
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
+            <label htmlFor="priority" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
               Priority
             </label>
             <select
+              id="priority"
               name="priority"
               value={formData.priority}
               onChange={handleChange}
@@ -152,10 +164,11 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ isOpen, onClose }) =>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
+            <label htmlFor="status" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
               Status
             </label>
             <select
+              id="status"
               name="status"
               value={formData.status}
               onChange={handleChange}
